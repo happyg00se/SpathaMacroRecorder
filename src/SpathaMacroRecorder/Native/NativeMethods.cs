@@ -107,6 +107,14 @@ internal static partial class NativeMethods
     [LibraryImport(Kernel32)]
     internal static partial uint GetCurrentThreadId();
 
+    /// <summary>Разрешить любому процессу вывести своё окно на передний план (для AllowSetForegroundWindow).</summary>
+    internal const uint ASFW_ANY = uint.MaxValue;
+
+    // Запущенная нами игра иначе может не получить права на передний план — см. App.OnStartup.
+    [LibraryImport(User32, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool AllowSetForegroundWindow(uint dwProcessId);
+
     [LibraryImport(Kernel32, EntryPoint = "GetModuleHandleW", StringMarshalling = StringMarshalling.Utf16)]
     internal static partial IntPtr GetModuleHandle(string? lpModuleName);
 

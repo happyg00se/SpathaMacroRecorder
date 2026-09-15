@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,9 @@ public partial class App : Application
     private GameLaunch.Request? _companionGame;
 
     private string? _gameLaunchError;
+
+    /// <summary>Что вышло при запуске игры — пишется в лог, как только лог поднимется.</summary>
+    private string? _gameLaunchInfo;
     private static bool _errorReported;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -46,8 +50,19 @@ public partial class App : Application
         {
             try
             {
+                // Вывести окно на передний план Windows разрешает только процессу, который запустила
+                // программа, сама стоящая на переднем плане. Нас запустил Steam — нам можно, а вот
+                // игре, которую запускаем уже мы, свёрнутые и без окна, — нет. Полноэкранная игра без
+                // фокуса остаётся за окном Steam или сворачивается: игра идёт, а картинки не видно.
+                // Поэтому перед запуском право выйти на передний план явно передаётся дальше. ASFW_ANY,
+                // а не номер процесса: игра при старте может перезапустить себя под другим номером.
+                bool focusHandedOver = NativeMethods.AllowSetForegroundWindow(NativeMethods.ASFW_ANY);
+                int focusError = Marshal.GetLastWin32Error();
+
                 using var launched = GameLaunch.Start(game);
                 _companionGame = game;
+                _gameLaunchInfo = $"process id {launched?.Id}, foreground hand-over: {focusHandedOver}"
+                    + (focusHandedOver ? string.Empty : $" (error {focusError})");
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
             {
@@ -156,7 +171,7 @@ public partial class App : Application
             mainWindow.ShowActivated = false;
             mainWindow.WindowState = WindowState.Minimized;
             mainWindow.Show();
-            Log.Information("SpathaMacroRecorder started together with {Game}", game.ProcessName);
+            Log.Information("SpathaMacroRecorder started together with {Game}: {LaunchInfo}", game.ProcessName, _gameLaunchInfo);
         }
         else
         {

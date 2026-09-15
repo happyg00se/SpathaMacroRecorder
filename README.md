@@ -110,6 +110,16 @@ in a row, about six seconds.
 The program can still be opened by hand at any time; opened that way it stays open until you close
 it. If a copy is already open when the game starts, the copy started by Steam replaces it.
 
+If the launch options already contained something — for example `--use-d3d11`, a common fix for a
+black screen in Helldivers 2 — keep it: put it at the end, after `%command%`:
+`"C:\Spatha\SpathaMacroRecorder.exe" --game %command% --use-d3d11`. Replacing the whole field with the
+copied line drops that option, and the game may then start without a picture.
+
+Windows lets a window come to the foreground only if its process was started by the foreground
+process. Steam starts this program, not the game, so before starting the game the program passes
+that permission on; otherwise a fullscreen game could start behind Steam or minimised, running but
+not visible.
+
 The game is recognised by the process name taken from that command (`helldivers2`). Only the list
 of running processes is read: no injection, no reading another process's memory. If you move the
 program to another folder, copy the line again.
