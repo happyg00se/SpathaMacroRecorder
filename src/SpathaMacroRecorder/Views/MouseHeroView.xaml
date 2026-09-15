@@ -1,0 +1,314 @@
+<UserControl x:Class="SpathaMacroRecorder.Views.MouseHeroView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:SpathaMacroRecorder.Models"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+
+        <!-- Маркер кнопки: кольцо со свечением. Назначенные пульсируют, наведение увеличивает. -->
+        <Style x:Key="MarkerStyle" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="MarkerScale" ScaleX="1" ScaleY="1" />
+                            </Grid.RenderTransform>
+
+                            <!-- Внешнее свечение -->
+                            <Ellipse x:Name="Glow"
+                                     Width="34"
+                                     Height="34"
+                                     Fill="{Binding IsAssigned, Converter={StaticResource MarkerGlowConverter}}"
+                                     Opacity="0.35" />
+
+                            <!-- Кольцо -->
+                            <Ellipse x:Name="Ring"
+                                     Width="22"
+                                     Height="22"
+                                     Stroke="{Binding IsAssigned, Converter={StaticResource MarkerStrokeConverter}}"
+                                     StrokeThickness="2"
+                                     Fill="#B0101014" />
+
+                            <!-- Ядро: горит только у назначенных -->
+                            <Ellipse Width="8"
+                                     Height="8"
+                                     Fill="{StaticResource AccentBrush}"
+                                     Visibility="{Binding IsAssigned, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <!-- Пульсация назначенных кнопок -->
+                            <DataTrigger Binding="{Binding IsAssigned}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard x:Name="PulseStoryboard">
+                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                            <DoubleAnimation Storyboard.TargetName="Glow"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0.25" To="0.75" Duration="0:0:1.4" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <StopStoryboard BeginStoryboardName="PulseStoryboard" />
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+
+                            <!-- Наведение -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="MarkerScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             To="1.35" Duration="0:0:0.15" />
+                                            <DoubleAnimation Storyboard.TargetName="MarkerScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             To="1.35" Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="MarkerScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             To="1" Duration="0:0:0.2" />
+                                            <DoubleAnimation Storyboard.TargetName="MarkerScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             To="1" Duration="0:0:0.2" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+
+                            <!-- Выбранная кнопка -->
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource AccentHoverBrush}" />
+                                <Setter TargetName="Ring" Property="StrokeThickness" Value="3" />
+                                <Setter TargetName="Glow" Property="Opacity" Value="0.9" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- Фоновое свечение: медленно дышит, даёт ощущение "живого" экрана -->
+        <Ellipse Width="700" Height="700" Opacity="0.30">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Offset="0" Color="#4DFF2A4D" />
+                    <GradientStop Offset="0.55" Color="#1A7A1030" />
+                    <GradientStop Offset="1" Color="Transparent" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+            <Ellipse.RenderTransform>
+                <ScaleTransform x:Name="AmbientScale" CenterX="350" CenterY="350" />
+            </Ellipse.RenderTransform>
+            <Ellipse.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                            <DoubleAnimation Storyboard.TargetName="AmbientScale"
+                                             Storyboard.TargetProperty="ScaleX"
+                                             From="0.92" To="1.08" Duration="0:0:6" />
+                            <DoubleAnimation Storyboard.TargetName="AmbientScale"
+                                             Storyboard.TargetProperty="ScaleY"
+                                             From="0.92" To="1.08" Duration="0:0:6" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Ellipse.Triggers>
+        </Ellipse>
+
+        <!-- Мышь и маркеры: одна система координат 983×370, масштабируется целиком -->
+        <Viewbox MaxWidth="760"
+                 MaxHeight="330"
+                 Margin="40,20,40,20"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Stretch="Uniform">
+            <Grid x:Name="HeroRoot"
+                  Width="983"
+                  Height="370"
+                  RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <ScaleTransform x:Name="HeroScale" ScaleX="0.94" ScaleY="0.94" />
+                </Grid.RenderTransform>
+                <Grid.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="HeroRoot"
+                                                 Storyboard.TargetProperty="Opacity"
+                                                 From="0" To="1" Duration="0:0:0.6" />
+                                <DoubleAnimation Storyboard.TargetName="HeroScale"
+                                                 Storyboard.TargetProperty="ScaleX"
+                                                 From="0.94" To="1" Duration="0:0:0.7">
+                                    <DoubleAnimation.EasingFunction>
+                                        <CubicEase EasingMode="EaseOut" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                                <DoubleAnimation Storyboard.TargetName="HeroScale"
+                                                 Storyboard.TargetProperty="ScaleY"
+                                                 From="0.94" To="1" Duration="0:0:0.7">
+                                    <DoubleAnimation.EasingFunction>
+                                        <CubicEase EasingMode="EaseOut" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Grid.Triggers>
+
+                <Image Source="pack://application:,,,/SpathaMacroRecorder;component/Resources/spatha.png"
+                       Stretch="Uniform" />
+
+                <ItemsControl ItemsSource="{Binding Buttons}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas Width="983" Height="370" Background="Transparent" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="{x:Type ContentPresenter}">
+                            <Setter Property="Canvas.Left" Value="{Binding MarkerLeft}" />
+                            <Setter Property="Canvas.Top" Value="{Binding MarkerTop}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding DataContext.SelectButtonCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    Style="{StaticResource MarkerStyle}"
+                                    ToolTipService.InitialShowDelay="150">
+                                <Button.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                                            <TextBlock Style="{StaticResource SecondaryTextStyle}"
+                                                       Text="{Binding AssignedMacroName, TargetNullValue='Not assigned'}" />
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Viewbox>
+
+        <!-- Панель назначения: выезжает справа при выборе кнопки -->
+        <Border Width="300"
+                Margin="0,30,30,30"
+                Padding="20"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="#F21E1E1E"
+                BorderBrush="{StaticResource AccentBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="28" Opacity="0.7" ShadowDepth="0" Color="#FF2A4D" />
+            </Border.Effect>
+            <Border.Triggers>
+                <EventTrigger RoutedEvent="Border.Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             From="0" To="1" Duration="0:0:0.25" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Border.Triggers>
+
+            <StackPanel>
+                <DockPanel Margin="0,0,0,14">
+                    <TextBlock Style="{StaticResource HeaderTextStyle}" Text="{Binding SelectionTitle}" />
+                    <Button DockPanel.Dock="Right"
+                            HorizontalAlignment="Right"
+                            Padding="8,2"
+                            Command="{Binding CloseSelectionCommand}"
+                            Content="✕" />
+                </DockPanel>
+
+                <!-- Определение: какая физическая кнопка соответствует этой метке -->
+                <Border Margin="0,0,0,14"
+                        Padding="10"
+                        Background="#1A000000"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                    <StackPanel>
+                        <StackPanel Visibility="{Binding IsDetecting, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                            <DockPanel Margin="0,0,0,8">
+                                <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="{loc:Tr CodeNow}" />
+                                <TextBlock Margin="6,0,0,0"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           Text="{Binding SelectedButtonCode}" />
+                            </DockPanel>
+                            <Button Command="{Binding DetectButtonCommand}"
+                                    Content="{loc:Tr Detect}"
+                                    ToolTip="{loc:Tr DetectTip}" />
+                            <Button Margin="0,6,0,0"
+                                    Command="{Binding ResetDetectionCommand}"
+                                    Content="{loc:Tr DetectReset}"
+                                    ToolTip="{loc:Tr DetectResetTip}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding IsDetecting, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="{loc:Tr DetectHint}" />
+                            <Button Margin="0,8,0,0"
+                                    Command="{Binding CancelDetectCommand}"
+                                    Content="{loc:Tr DetectCancel}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Margin="0,0,0,6"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr MacroOnButton}" />
+                <ComboBox ItemsSource="{Binding MacroChoices}"
+                          SelectedItem="{Binding SelectedChoice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Label}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <TextBlock Margin="0,16,0,6"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr HowItPlays}" />
+                <ComboBox ItemsSource="{Binding PlaybackModes}"
+                          SelectedItem="{Binding PlaybackMode}" />
+
+                <StackPanel Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Margin="0,10,0,6"
+                               Style="{StaticResource SecondaryTextStyle}"
+                               Text="{loc:Tr RepeatCount}" />
+                    <TextBox Text="{Binding RepeatCount, UpdateSourceTrigger=LostFocus}" />
+                </StackPanel>
+
+                <TextBlock Margin="0,16,0,0"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           TextWrapping="Wrap"
+                           Text="{loc:Tr AssignHint}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,130 @@
+<Window x:Class="SpathaMacroRecorder.Views.SettingsView"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:SpathaMacroRecorder.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Background="{StaticResource WindowBackgroundBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="{StaticResource AppFontFamily}"
+        FontSize="12"
+        Title="{loc:Tr PreferencesTitle}"
+        Width="460"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="20">
+
+        <TextBlock Style="{StaticResource HeaderTextStyle}" Text="{loc:Tr Language}" />
+        <StackPanel Margin="0,8,0,20" Orientation="Horizontal">
+            <RadioButton x:Name="LangRuRadio"
+                         Margin="0,0,20,0"
+                         Content="{loc:Tr LanguageRussian}"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         GroupName="Language" />
+            <RadioButton x:Name="LangEnRadio"
+                         Content="{loc:Tr LanguageEnglish}"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         GroupName="Language" />
+            <TextBlock Margin="8,0,0,0"
+                       VerticalAlignment="Center"
+                       FontStyle="Italic"
+                       Foreground="{StaticResource AccentBrush}"
+                       Text="{loc:Tr LanguageNote}" />
+        </StackPanel>
+
+        <TextBlock Style="{StaticResource HeaderTextStyle}" Text="{loc:Tr PanicKey}" />
+        <TextBlock Margin="0,4,0,8"
+                   Style="{StaticResource SecondaryTextStyle}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Tr PanicKeyHint}" />
+        <DockPanel Margin="0,0,0,20">
+            <Button x:Name="CaptureButton"
+                    Width="130"
+                    DockPanel.Dock="Right"
+                    Click="Capture_Click"
+                    Content="{loc:Tr PressKey}" />
+            <Border Margin="0,0,10,0"
+                    Padding="10,6"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1">
+                <TextBlock x:Name="PanicKeyText" VerticalAlignment="Center" />
+            </Border>
+        </DockPanel>
+
+        <TextBlock Style="{StaticResource HeaderTextStyle}" Text="{loc:Tr PauseKey}" />
+        <TextBlock Margin="0,4,0,8"
+                   Style="{StaticResource SecondaryTextStyle}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Tr PauseKeyHint}" />
+        <DockPanel Margin="0,0,0,20">
+            <Button x:Name="CapturePauseButton"
+                    Width="130"
+                    DockPanel.Dock="Right"
+                    Click="CapturePause_Click"
+                    Content="{loc:Tr PressKey}" />
+            <Border Margin="0,0,10,0"
+                    Padding="10,6"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1">
+                <TextBlock x:Name="PauseKeyText" VerticalAlignment="Center" />
+            </Border>
+        </DockPanel>
+
+        <TextBlock Style="{StaticResource HeaderTextStyle}" Text="{loc:Tr KeyGap}" />
+        <TextBlock Margin="0,4,0,8"
+                   Style="{StaticResource SecondaryTextStyle}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Tr KeyGapHint}" />
+        <StackPanel Margin="0,0,0,20" Orientation="Horizontal">
+            <TextBox x:Name="KeyGapBox" Width="80" />
+            <TextBlock Margin="8,0,0,0"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource SecondaryTextStyle}"
+                       Text="{loc:Tr KeyGapUnit}" />
+        </StackPanel>
+
+        <TextBlock Style="{StaticResource HeaderTextStyle}" Text="{loc:Tr SteamSection}" />
+        <TextBlock Margin="0,4,0,8"
+                   Style="{StaticResource SecondaryTextStyle}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Tr SteamHint}" />
+        <DockPanel Margin="0,0,0,6">
+            <Button x:Name="CopySteamButton"
+                    Width="110"
+                    Margin="8,0,0,0"
+                    DockPanel.Dock="Right"
+                    Click="CopySteam_Click"
+                    Content="{loc:Tr SteamCopy}" />
+            <TextBox x:Name="SteamLaunchBox" IsReadOnly="True" />
+        </DockPanel>
+        <TextBlock x:Name="SteamTempWarning"
+                   Margin="0,0,0,6"
+                   Foreground="{StaticResource AccentBrush}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Tr SteamTempWarning}"
+                   Visibility="Collapsed" />
+        <TextBlock Margin="0,0,0,20"
+                   Style="{StaticResource SecondaryTextStyle}"
+                   TextWrapping="Wrap"
+                   Text="{loc:Tr SteamMoveNote}" />
+
+        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+            <Button Width="100"
+                    Margin="0,0,8,0"
+                    Click="Cancel_Click"
+                    Content="{loc:Tr Cancel}"
+                    IsCancel="True" />
+            <Button Width="100"
+                    Click="Save_Click"
+                    Content="{loc:Tr SaveShort}"
+                    IsDefault="True"
+                    Style="{StaticResource AccentButtonStyle}" />
+        </StackPanel>
+    </StackPanel>
+</Window>

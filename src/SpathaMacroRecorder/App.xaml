@@ -1,0 +1,16 @@
+﻿<Application x:Class="SpathaMacroRecorder.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SpathaMacroRecorder">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!--
+                    Полный pack-URI, а не относительный путь: в single-file публикации
+                    относительные Source у словарей ресурсов резолвятся не всегда.
+                -->
+                <ResourceDictionary Source="pack://application:,,,/SpathaMacroRecorder;component/Themes/DarkTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

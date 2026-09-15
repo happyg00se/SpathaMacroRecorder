@@ -1,0 +1,74 @@
+<Window x:Class="SpathaMacroRecorder.Views.FaqView"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:SpathaMacroRecorder.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Background="{StaticResource WindowBackgroundBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="{StaticResource AppFontFamily}"
+        FontSize="12"
+        Title="{loc:Tr FaqTitle}"
+        Icon="pack://application:,,,/SpathaMacroRecorder;component/Resources/spatha.ico"
+        Width="600"
+        Height="640"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="26,22,26,20">
+
+        <Button DockPanel.Dock="Bottom"
+                Width="120"
+                Margin="0,18,0,0"
+                Padding="10,8"
+                HorizontalAlignment="Right"
+                Click="Close_Click"
+                Content="{loc:Tr GotIt}"
+                IsDefault="True"
+                Style="{StaticResource AccentButtonStyle}" />
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <TextBlock FontSize="18" FontWeight="Light" Foreground="{StaticResource TextPrimaryBrush}">
+                    <Run Text="SPATHA" /><Run Foreground="{StaticResource AccentBrush}" Text=" MACRO" />
+                </TextBlock>
+                <TextBlock Margin="0,4,0,18"
+                           Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr FaqSubtitle}" />
+
+                <TextBlock Style="{StaticResource HeaderTextStyle}"
+                           Foreground="{StaticResource AccentBrush}"
+                           Text="{loc:Tr Faq1}" />
+                <TextBlock Margin="0,6,0,16" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr Faq1Text}" />
+
+                <TextBlock Style="{StaticResource HeaderTextStyle}"
+                           Foreground="{StaticResource AccentBrush}"
+                           Text="{loc:Tr Faq2}" />
+                <TextBlock Margin="0,6,0,16" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr Faq2Text}" />
+
+                <TextBlock Style="{StaticResource HeaderTextStyle}"
+                           Foreground="{StaticResource AccentBrush}"
+                           Text="{loc:Tr Faq3}" />
+                <TextBlock Margin="0,6,0,16" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr Faq3Text}" />
+
+                <TextBlock Style="{StaticResource HeaderTextStyle}"
+                           Foreground="{StaticResource AccentBrush}"
+                           Text="{loc:Tr Faq4}" />
+                <TextBlock Margin="0,6,0,16" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr Faq4Text}" />
+
+                <TextBlock Style="{StaticResource HeaderTextStyle}"
+                           Foreground="{StaticResource AccentBrush}"
+                           Text="{loc:Tr FaqTrouble}" />
+                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"
+                           Text="{loc:Tr FaqTroubleText}" />
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
