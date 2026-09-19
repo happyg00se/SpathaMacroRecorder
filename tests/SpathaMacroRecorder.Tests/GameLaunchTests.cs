@@ -3,7 +3,7 @@ using SpathaMacroRecorder.Services;
 namespace SpathaMacroRecorder.Tests;
 
 /// <summary>
-/// Разбор строки, которой Steam запускает программу вместо игры: «--game %command%».
+/// Разбор строки, которой Steam запускает программу вместо игры: «--game %command% --use-d3d12».
 /// </summary>
 public class GameLaunchTests
 {
@@ -42,8 +42,19 @@ public class GameLaunchTests
     [Fact]
     public void SteamLaunchOptions_QuotesThePathAndKeepsTheSteamPlaceholder() =>
         Assert.Equal(
-            "\"C:\\Spatha\\SpathaMacroRecorder.exe\" --game %command%",
+            "\"C:\\Spatha\\SpathaMacroRecorder.exe\" --game %command% --use-d3d12",
             GameLaunch.SteamLaunchOptions(@"C:\Spatha\SpathaMacroRecorder.exe"));
+
+    [Fact]
+    public void Parse_PassesTheDirectX12FlagOnToTheGame()
+    {
+        // Так Steam разворачивает готовую строку: команда игры, а за ней наш --use-d3d12.
+        var request = GameLaunch.Parse(["--game", GamePath, "--use-d3d12"]);
+
+        Assert.NotNull(request);
+        Assert.Equal(GamePath, request!.ExecutablePath);
+        Assert.Equal(new[] { "--use-d3d12" }, request.Arguments);
+    }
 
     [Theory]
     [InlineData(@"C:\Users\r4v3r_63\AppData\Local\Temp\Rar$EXa29292.11346.rartemp\SpathaMacroRecorder.exe", true)]

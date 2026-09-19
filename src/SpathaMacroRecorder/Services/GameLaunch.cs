@@ -6,17 +6,23 @@ namespace SpathaMacroRecorder.Services;
 /// Запуск вместе с игрой через Steam.
 ///
 /// В свойствах игры в Steam, в «Параметрах запуска», пишется строка
-/// <c>"C:\Spatha\SpathaMacroRecorder.exe" --game %command%</c>. Steam подставляет вместо
+/// <c>"C:\Spatha\SpathaMacroRecorder.exe" --game %command% --use-d3d12</c>. Steam подставляет вместо
 /// %command% собственную команду запуска игры и запускает не игру, а программу. Программа сразу
 /// запускает игру ровно этой командой, а когда игра закрывается — закрывается сама.
 ///
 /// Так программа живёт ровно столько, сколько игра: ничего не висит в фоне и не прописывается
 /// в автозапуск Windows. Узнать о запуске игры без уже работающей программы по-другому нельзя —
 /// разве что через системные механизмы с правами администратора, которые здесь неуместны.
+///
+/// Всё, что стоит после %command%, Steam дописывает в конец команды игры, поэтому <c>--use-d3d12</c>
+/// в готовой строке достаётся самой игре: Helldivers 2 запускается на DirectX 12.
 /// </summary>
 internal static class GameLaunch
 {
     internal const string GameArgument = "--game";
+
+    /// <summary>Параметр самой игры: Helldivers 2 рендерит через DirectX 12.</summary>
+    internal const string DirectX12Argument = "--use-d3d12";
 
     /// <summary>Команда запуска игры, полученная от Steam.</summary>
     internal sealed record Request(string ExecutablePath, IReadOnlyList<string> Arguments)
@@ -75,7 +81,7 @@ internal static class GameLaunch
 
     /// <summary>Строка для «Параметров запуска» в Steam.</summary>
     internal static string SteamLaunchOptions(string? executablePath) =>
-        $"\"{executablePath}\" {GameArgument} %command%";
+        $"\"{executablePath}\" {GameArgument} %command% {DirectX12Argument}";
 
     /// <summary>
     /// Программа запущена из временной папки (обычно прямо из архива) — строка для Steam указала

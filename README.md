@@ -99,7 +99,11 @@ through it instead:
 
 1. Open Preferences and press **Copy** under *Start together with the game (Steam)*.
 2. In Steam: Library → Helldivers 2 → Properties → General → Launch options — paste the line.
-   It looks like `"C:\Spatha\SpathaMacroRecorder.exe" --game %command%`.
+   It looks like `"C:\Spatha\SpathaMacroRecorder.exe" --game %command% --use-d3d12`.
+
+Everything after `%command%` is appended by Steam to the game's own command, so the trailing
+`--use-d3d12` goes to Helldivers 2 itself and the game runs on DirectX 12. For DirectX 11 replace
+it with `--use-d3d11`; launch options you already had go at the end of the line as well.
 
 From then on, launching the game from Steam starts the program, and the program starts the game
 with exactly the command Steam gave it. The window opens minimised so it does not jump over the
