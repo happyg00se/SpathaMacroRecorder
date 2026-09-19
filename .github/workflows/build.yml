@@ -7,6 +7,10 @@ on:
     branches: ["**"]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Номер релиза, например 1.0. Пусто — просто собрать, без релиза."
+        default: ""
 
 # Нужно, чтобы шаг релиза мог выложить exe в раздел Releases.
 permissions:
@@ -29,13 +33,16 @@ jobs:
       - name: Сборка одного exe
         run: dotnet publish src/SpathaMacroRecorder -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 
-      - name: Релиз по тегу
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Тег ставит сам GitHub при создании релиза, поэтому отдельно его пушить не нужно.
+      - name: Релиз
+        if: github.ref_type == 'tag' || inputs.release != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $version = "${{ github.ref_name }}" -replace '^v', ''
-          gh release create "${{ github.ref_name }}" `
+          $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "v${{ inputs.release }}" }
+          $version = $tag -replace '^v', ''
+          gh release create $tag `
+            --target "${{ github.sha }}" `
             "src/SpathaMacroRecorder/bin/Release/net10.0-windows/win-x64/publish/SpathaMacroRecorder.exe" `
             --title "Release $version" `
             --notes "Готовая программа: скачайте SpathaMacroRecorder.exe ниже и положите в постоянную папку, например C:\Spatha. Устанавливать ничего не нужно."
