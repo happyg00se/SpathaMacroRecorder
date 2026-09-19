@@ -101,8 +101,14 @@ through it instead:
 2. In Steam: Library → Helldivers 2 → Properties → General → Launch options — paste the line.
    It looks like `"C:\Spatha\SpathaMacroRecorder.exe" --game %command%`.
 
+Everything after `%command%` is appended by Steam to the game's own command and reaches Helldivers 2
+unchanged, so launch options you already had (`--use-d3d11`, for example) go at the end of the line.
+The game renders through DirectX 12 by default; no flag is needed for that.
+
 From then on, launching the game from Steam starts the program, and the program starts the game
-with exactly the command Steam gave it. The window opens minimised so it does not jump over the
+with exactly the command Steam gave it, from the folder Steam started the program in — the game's
+install root. The game looks for its data relative to that folder, so handing it the folder of the
+exe itself (`bin`) leaves it on a black screen. The window opens minimised so it does not jump over the
 loading game. When the game closes, the program closes too. A short restart of the game process
 right after launch (anti-cheat does this) does not count: the game has to be gone for three checks
 in a row, about six seconds.

@@ -1,0 +1,47 @@
+# Сборка программы силами GitHub: тесты и готовый exe, который остаётся скачать.
+# Запускается сама на каждый push, а вручную — вкладка Actions → Сборка → Run workflow.
+name: Сборка
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+# Нужно, чтобы шаг релиза мог выложить exe в раздел Releases.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Тесты
+        run: dotnet test -c Release
+
+      - name: Сборка одного exe
+        run: dotnet publish src/SpathaMacroRecorder -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: Релиз по тегу
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          gh release create "${{ github.ref_name }}" `
+            "src/SpathaMacroRecorder/bin/Release/net10.0-windows/win-x64/publish/SpathaMacroRecorder.exe" `
+            --title "Release $version" `
+            --notes "Готовая программа: скачайте SpathaMacroRecorder.exe ниже и положите в постоянную папку, например C:\Spatha. Устанавливать ничего не нужно."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpathaMacroRecorder
+          path: src/SpathaMacroRecorder/bin/Release/net10.0-windows/win-x64/publish/SpathaMacroRecorder.exe
+          if-no-files-found: error
