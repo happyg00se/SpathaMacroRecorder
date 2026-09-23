@@ -67,7 +67,7 @@
 2. **Google Chrome**, если его ещё нет.
 3. **Ollama** с [ollama.com](https://ollama.com/download) (сама запускается вместе с Windows). Потом в командной строке:
    ```
-   ollama pull qwen2.5:14b
+   ollama pull qwen2.5:7b
    ```
    Модель выбирай под видеокарту:
    - 8 ГБ видеопамяти — `qwen2.5:7b`;

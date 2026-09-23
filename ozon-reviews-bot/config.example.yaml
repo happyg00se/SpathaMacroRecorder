@@ -39,11 +39,11 @@ max_items_per_check: 30
 
 # ─── Локальная нейросеть ─────────────────────────────────────────────────────
 # Любой сервер с OpenAI-совместимым API: Ollama, LM Studio, llama.cpp, vLLM.
-#   Ollama:    http://localhost:11434/v1   (модель: ollama pull qwen2.5:14b)
+#   Ollama:    http://localhost:11434/v1   (модель: ollama pull qwen2.5:7b)
 #   LM Studio: http://localhost:1234/v1
 llm:
   base_url: http://localhost:11434/v1
-  model: qwen2.5:14b
+  model: qwen2.5:7b                # под 8 ГБ видеопамяти; при 12+ ГБ — qwen2.5:14b
   api_key: ""                      # для локальных серверов не нужен
   temperature: 0.4
   timeout_seconds: 300

@@ -14,7 +14,7 @@ if not exist config.yaml (
 )
 echo.
 echo Готово. Дальше:
-echo   1. Установи Ollama с ollama.com и выполни: ollama pull qwen2.5:14b
+echo   1. Установи Ollama с ollama.com и выполни: ollama pull qwen2.5:7b
 echo   2. Запусти login.bat и войди в кабинет Ozon
 echo   3. Проверка без публикации: dry-run.bat
 echo   4. Запуск бота: run.bat
