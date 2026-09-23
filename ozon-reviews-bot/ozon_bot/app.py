@@ -13,6 +13,7 @@ from pathlib import Path
 
 from . import storage as st
 from .llm import LLMError, LocalLLM
+from .ozon_browser import LoginRequired
 from .models import Draft, Item
 from .storage import Storage
 from .telegram import Telegram, esc
@@ -26,15 +27,48 @@ MODE_RU = {
     "manual": "ничего не публикую без твоей кнопки",
 }
 
-HELP = """<b>Команды</b>
-/check — проверить отзывы и вопросы прямо сейчас
+HELP = """<b>Отзывы</b>
+/scan — проверить отзывы и вопросы прямо сейчас
 /status — что сделано и что ждёт тебя
 /pending — прислать заново всё, что ждёт решения
 /mode_all · /mode_safe · /mode_manual — когда публиковать без спроса
 /pause · /resume — остановить или продолжить автопроверку
 
 Под каждым ответом кнопки:
-✅ опубликовать · 🔄 переписать · ✏️ свой текст или указание · ⏭ пропустить"""
+✅ опубликовать · 🔄 переписать · ✏️ свой текст или указание · ⏭ пропустить
+
+<b>Пульт Chrome на домашнем компьютере</b>
+/screen — снимок того, что сейчас открыто
+/login — открыть вход в кабинет Ozon
+/open reviews · /open questions · /open адрес — открыть страницу
+/click текст — нажать на кнопку или поле с этим текстом
+/type текст — напечатать (номер телефона, код из СМС)
+/key Enter — нажать клавишу
+
+Просто напиши сообщение — отвечу как помощник: помогу с формулировкой, подскажу по отзывам."""
+
+LOGIN_HELP = """🔐 <b>Ozon просит войти в кабинет заново.</b> Можно прямо с телефона:
+1. /login — откроется вход, пришлю снимок экрана
+2. /click Телефон — нажать на поле (пиши текст, как на снимке)
+3. /type 9991234567 — ввести номер
+4. /key Enter или /click Войти
+5. /type 123456 — код из СМС
+6. /scan — проверить, что всё работает
+Пока не войдёшь, автопроверка ждёт."""
+
+MENU = [
+    ("scan", "Проверить отзывы сейчас"),
+    ("status", "Что сделано и что ждёт"),
+    ("pending", "Всё, что ждёт решения"),
+    ("screen", "Снимок Chrome на компьютере"),
+    ("login", "Войти в кабинет Ozon"),
+    ("mode_safe", "Негатив — на мои кнопки"),
+    ("mode_all", "Публиковать всё самому"),
+    ("mode_manual", "Ничего без моей кнопки"),
+    ("pause", "Остановить автопроверку"),
+    ("resume", "Продолжить автопроверку"),
+    ("help", "Все команды"),
+]
 
 
 class App:
@@ -49,6 +83,8 @@ class App:
         self.jobs: queue.Queue = queue.Queue()
         self._stop = threading.Event()
         self._busy = threading.Lock()
+        self._last_error = ""
+        self._history: dict[int, list[dict]] = {}
 
     # ─── настройки, которые меняются из Telegram ─────────────────────────────
     @property
@@ -63,18 +99,22 @@ class App:
     def run(self) -> None:
         worker = threading.Thread(target=self._worker, name="worker", daemon=True)
         worker.start()
-        self.notify(f"🤖 Бот запущен. Режим: <b>{MODE_RU[self.mode]}</b>.\n\n{HELP}")
+        self.tg.set_commands(MENU)
+        self.notify(f"🤖 Помощник запущен на домашнем компьютере. Режим: <b>{MODE_RU[self.mode]}</b>.\n/help — все команды")
         try:
             self._telegram_loop()
         except KeyboardInterrupt:
             pass
         finally:
             self._stop.set()
+            if hasattr(self.source, "close"):
+                self.jobs.put(self.source.close)  # Chrome закрывает тот же поток, что его открыл
             self.jobs.put(None)
+            worker.join(timeout=20)
 
     def _worker(self) -> None:
         next_check = 0.0
-        while not self._stop.is_set():
+        while True:
             timeout = max(0.0, next_check - time.time())
             try:
                 job = self.jobs.get(timeout=timeout)
@@ -82,6 +122,8 @@ class App:
                 job = "auto-check"
             if job is None:
                 return
+            if self._stop.is_set() and job == "auto-check":
+                continue
             try:
                 if job == "auto-check":
                     next_check = time.time() + self.poll_seconds
@@ -91,7 +133,10 @@ class App:
                     job()
             except Exception as e:  # noqa: BLE001 — рабочий поток не должен умирать
                 log.exception("Ошибка в задаче")
-                self.notify(f"⚠️ Ошибка: {esc(str(e))}")
+                # одна и та же ошибка каждые 15 минут — это спам, присылаем её один раз
+                if str(e) != self._last_error:
+                    self._last_error = str(e)
+                    self.notify(f"⚠️ Ошибка: {esc(str(e))}")
 
     def _telegram_loop(self) -> None:
         offset = int(self.db.get_kv("tg_offset", "0"))
@@ -110,7 +155,17 @@ class App:
     # ─── проверка новых отзывов ──────────────────────────────────────────────
     def check(self, manual: bool = False) -> dict:
         with self._busy:
-            items = self.source.fetch_new()
+            try:
+                items = self.source.fetch_new()
+            except LoginRequired:
+                if self.db.get_kv("login_alert") != "1" or manual:
+                    self.db.set_kv("login_alert", "1")
+                    self.notify(LOGIN_HELP)
+                return {"new": 0, "login": 1}
+            if self.db.get_kv("login_alert") == "1":
+                self.db.set_kv("login_alert", "0")
+                self.notify("✅ Вход в кабинет Ozon есть, работаю дальше.")
+            self._last_error = ""
             fresh = [i for i in items if self._is_new(i)]
             stats = {"new": len(fresh), "published": 0, "pending": 0, "skipped": 0, "errors": 0}
             for item in fresh:
@@ -289,10 +344,13 @@ class App:
         if text.startswith("/"):
             if waiting:
                 self.db.set_kv(f"await_edit:{chat_id}", "")
-            self.command(chat_id, text.split()[0].split("@")[0].lower())
+            cmd, _, arg = text.partition(" ")
+            self.command(chat_id, cmd.split("@")[0].lower(), arg.strip())
             return
         if not waiting:
-            self.tg.send(chat_id, HELP)
+            if text:
+                self.tg.typing(chat_id)
+                self.jobs.put(lambda: self.assistant(chat_id, text))
             return
 
         self.db.set_kv(f"await_edit:{chat_id}", "")
@@ -312,7 +370,26 @@ class App:
             self.tg.send(chat_id, "Публикую твой текст…")
             self.jobs.put(lambda: self._publish_from_button(item, draft, chat_id, message_id))
 
-    def command(self, chat_id: int, cmd: str) -> None:
+    def command(self, chat_id: int, cmd: str, arg: str = "") -> None:
+        remote = {
+            "/screen": lambda: self.source.screenshot(),
+            "/login": lambda: self.source.open("reviews"),
+            "/open": lambda: self.source.open(arg or "reviews"),
+            "/click": lambda: self.source.click_text(arg),
+            "/type": lambda: self.source.type_text(arg),
+            "/key": lambda: self.source.press(arg or "Enter"),
+            "/enter": lambda: self.source.press("Enter"),
+        }
+        if cmd in remote:
+            if not hasattr(self.source, "screenshot"):
+                self.tg.send(chat_id, "Пульт работает только в режиме source: browser.")
+            elif cmd in ("/click", "/type") and not arg:
+                self.tg.send(chat_id, f"Напиши, что именно: <code>{cmd} текст</code>")
+            else:
+                self.jobs.put(lambda: self._remote(chat_id, remote[cmd], login=cmd == "/login"))
+            return
+        if cmd == "/scan":
+            cmd = "/check"
         if cmd in ("/start", "/help"):
             self.tg.send(chat_id, f"Режим: <b>{MODE_RU[self.mode]}</b>{' (на паузе)' if self.paused else ''}\n\n{HELP}")
         elif cmd == "/check":
@@ -353,8 +430,54 @@ class App:
             self.tg.send(chat_id, HELP)
 
 
+    # ─── пульт и помощник ────────────────────────────────────────────────────
+    def _remote(self, chat_id: int, action, login: bool = False) -> None:
+        try:
+            shot = action()
+            url = self.source.current_url()
+        except Exception as e:  # noqa: BLE001
+            self.tg.send(chat_id, f"⚠️ {esc(str(e))}")
+            return
+        caption = f"🖥 {esc(url[:200])}"
+        if login:
+            caption += "\nДальше: /click текст с поля → /type данные → /key Enter"
+        self.tg.send_photo(chat_id, shot, caption)
+
+    def assistant(self, chat_id: int, text: str) -> None:
+        history = self._history.setdefault(chat_id, [])
+        history.append({"role": "user", "content": text})
+        del history[:-12]
+        try:
+            answer = self.llm.chat([{"role": "system", "content": self._assistant_prompt()}, *history])
+        except LLMError as e:
+            history.pop()
+            self.tg.send(chat_id, f"⚠️ {esc(str(e))}")
+            return
+        history.append({"role": "assistant", "content": answer})
+        self.tg.send(chat_id, esc(answer) or "…")
+
+    def _assistant_prompt(self) -> str:
+        shop = self.cfg.get("shop") or {}
+        c = self.db.counts()
+        pending = []
+        for key in self.db.keys_with_status(st.PENDING)[:5]:
+            item, _, draft, _ = self.db.get(key)
+            pending.append(f"- {item.kind_ru} ({item.rating or '-'}★, {item.product_name}): {item.text[:200]}")
+        return (
+            f"Ты — личный помощник продавца на Ozon, работаешь на его домашнем компьютере. "
+            f"Магазин «{shop.get('name', '')}»: {shop.get('about', '')}\n"
+            f"Твоя основная работа — отвечать на отзывы и вопросы покупателей. Сейчас: опубликовано {c.get(st.PUBLISHED, 0)}, "
+            f"ждут решения владельца {c.get(st.PENDING, 0)}, режим «{MODE_RU[self.mode]}»"
+            f"{', автопроверка на паузе' if self.paused else ''}.\n"
+            + ("Ждут решения:\n" + "\n".join(pending) + "\n" if pending else "")
+            + "Отвечай коротко и по делу, по-русски, без разметки. Помогай формулировать ответы покупателям, "
+            "разбирать жалобы, придумывать тексты. Если нужно действие — подскажи команду: /scan, /status, /pending, "
+            "/screen, /login, /mode_safe, /mode_all, /mode_manual, /pause, /resume. Сам ничего в Ozon не публикуешь."
+        )
+
+
 def build(cfg: dict) -> App:
-    if cfg.get("source", "api") == "browser":
+    if cfg.get("source", "browser") == "browser":
         from .ozon_browser import OzonBrowser
 
         source = OzonBrowser(cfg)

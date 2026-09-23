@@ -1,19 +1,22 @@
 # Скопируй этот файл в config.yaml и заполни. config.yaml в git не попадает.
 
 # ─── Откуда брать отзывы и вопросы ───────────────────────────────────────────
-# api     — через Ozon Seller API (надёжно, но отзывы в API доступны только с подпиской Premium Plus / Premium Pro).
-# browser — через Chrome: бот сам открывает кабинет seller.ozon.ru под твоим логином.
-source: api
+# browser — бесплатно: бот сам работает в кабинете seller.ozon.ru через Chrome на твоём компьютере.
+# api     — через Ozon Seller API. Отзывы в API Ozon даёт только с платной подпиской Premium Plus/Pro.
+source: browser
 
+# Нужно только для source: api
 ozon_api:
-  client_id: "123456"              # Кабинет → Настройки → Seller API
-  api_key: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  client_id: ""
+  api_key: ""
 
 browser:
   profile_dir: data/chrome-profile # отдельный профиль Chrome, логинишься в него один раз командой `login`
   channel: chrome                  # chrome — установленный Google Chrome; пусто — встроенный Chromium
   executable_path: ""              # путь к chrome.exe, если Chrome стоит в нестандартной папке
-  headless: false                  # true — окно браузера не показывается
+  headless: false                  # true — совсем без окна (Ozon такое иногда блокирует, начни с false)
+  hide_window: true                # окно Chrome открыто, но спрятано за край экрана и не мешает
+  restart_hours: 6                 # раз в столько часов Chrome перезапускается, чтобы не копил память
   reviews_url: https://seller.ozon.ru/app/reviews
   questions_url: https://seller.ozon.ru/app/questions
   # Селекторы кабинета. Ozon периодически меняет вёрстку — если бот перестал видеть отзывы,

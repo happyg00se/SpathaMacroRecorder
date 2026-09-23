@@ -82,15 +82,20 @@ class LocalLLM:
             self.http.trust_env = False  # системный прокси не должен перехватывать локальную нейросеть
 
     def draft(self, item: Item, hint: str = "") -> Draft:
-        body = {
-            "model": self.model,
-            "temperature": self.temperature,
-            "messages": [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": build_user_prompt(item, hint)},
-            ],
-        }
-        if self.json_mode:
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": build_user_prompt(item, hint)},
+        ]
+        return self.check(parse_draft(self._complete(messages, json_mode=self.json_mode)))
+
+    def chat(self, messages: list[dict]) -> str:
+        """Свободный разговор — для помощника в Telegram."""
+        text = self._complete(messages, json_mode=False)
+        return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+    def _complete(self, messages: list[dict], json_mode: bool) -> str:
+        body = {"model": self.model, "temperature": self.temperature, "messages": messages}
+        if json_mode:
             body["response_format"] = {"type": "json_object"}
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         try:
@@ -100,10 +105,9 @@ class LocalLLM:
         if resp.status_code >= 400:
             raise LLMError(f"Нейросеть вернула ошибку {resp.status_code}: {resp.text[:300]}")
         try:
-            content = resp.json()["choices"][0]["message"]["content"]
+            return resp.json()["choices"][0]["message"]["content"] or ""
         except (ValueError, KeyError, IndexError) as e:
             raise LLMError(f"Непонятный ответ нейросети: {resp.text[:300]}") from e
-        return self.check(parse_draft(content))
 
     def check(self, draft: Draft) -> Draft:
         """Страховка поверх нейросети: запрещёнка и длина."""

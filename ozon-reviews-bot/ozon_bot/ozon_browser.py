@@ -16,6 +16,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -36,6 +37,10 @@ class BrowserError(Exception):
     pass
 
 
+class LoginRequired(BrowserError):
+    """Ozon разлогинил — нужно войти заново (можно прямо с телефона через пульт)."""
+
+
 class OzonBrowser:
     def __init__(self, cfg: dict):
         b = cfg.get("browser") or {}
@@ -43,38 +48,139 @@ class OzonBrowser:
         self.channel = b.get("channel", "chrome") or None
         self.executable_path = b.get("executable_path") or None
         self.headless = bool(b.get("headless", False))
+        self.hide_window = bool(b.get("hide_window", True))
+        self.restart_hours = float(b.get("restart_hours", 6))
         self.urls = {"review": b.get("reviews_url"), "question": b.get("questions_url")}
         self.sel = b.get("selectors") or {}
         self.limit = int(cfg.get("max_items_per_check", 30))
         self.check = {"review": cfg.get("check_reviews", True), "question": cfg.get("check_questions", True)}
         self.data_dir = Path(cfg.get("data_dir", "data"))
+        self._pw = None
+        self._ctx = None
+        self._started = 0.0
 
-    @contextmanager
-    def _page(self, headless: bool | None = None):
+    # ─── браузер ─────────────────────────────────────────────────────────────
+    # Бот держит один Chrome открытым круглые сутки: так вход в кабинет не слетает, а проверка
+    # идёт за секунды. Раз в restart_hours браузер перезапускается, чтобы не копил память.
+    # Все вызовы — только из одного потока (рабочего потока бота).
+    def _launch(self, headless: bool):
         try:
             from playwright.sync_api import sync_playwright
         except ImportError as e:
             raise BrowserError("Не установлен playwright: pip install playwright") from e
-        with sync_playwright() as pw:
+        pw = sync_playwright().start()
+        args = ["--disable-blink-features=AutomationControlled"]
+        if self.hide_window and not headless:
+            args.append("--window-position=-32000,-32000")  # окно есть, но за краем экрана и не мешает
+        try:
+            ctx = pw.chromium.launch_persistent_context(
+                self.profile_dir,
+                channel=None if self.executable_path else self.channel,
+                executable_path=self.executable_path,
+                headless=headless,
+                viewport={"width": 1400, "height": 900},
+                locale="ru-RU",
+                args=args,
+            )
+        except Exception as e:  # noqa: BLE001 — playwright кидает разные ошибки
+            pw.stop()
+            raise BrowserError(
+                f"Chrome не запустился: {e}. Закрой другие окна бота и проверь, что установлен Google Chrome "
+                f"(или поставь browser.channel пустым)."
+            ) from e
+        return pw, ctx
+
+    @contextmanager
+    def _page(self, headless: bool | None = None):
+        if headless is not None:
+            # разовый запуск для login/diagnose из консоли
+            pw, ctx = self._launch(headless)
             try:
-                ctx = pw.chromium.launch_persistent_context(
-                    self.profile_dir,
-                    channel=None if self.executable_path else self.channel,
-                    executable_path=self.executable_path,
-                    headless=self.headless if headless is None else headless,
-                    viewport={"width": 1400, "height": 900},
-                    locale="ru-RU",
-                )
-            except Exception as e:  # noqa: BLE001 — playwright кидает разные ошибки
-                raise BrowserError(
-                    f"Chrome не запустился: {e}. Закрой другие окна бота и проверь, что установлен Google Chrome "
-                    f"(или поставь browser.channel пустым)."
-                ) from e
-            try:
-                page = ctx.pages[0] if ctx.pages else ctx.new_page()
-                yield page
+                yield ctx.pages[0] if ctx.pages else ctx.new_page()
             finally:
                 ctx.close()
+                pw.stop()
+            return
+
+        if self._ctx is not None and time.time() - self._started > self.restart_hours * 3600:
+            self.close()
+        page = None
+        if self._ctx is not None:
+            try:
+                page = self._ctx.pages[0] if self._ctx.pages else self._ctx.new_page()
+            except Exception:  # noqa: BLE001 — окно закрыли руками или Chrome упал
+                self.close()
+        if page is None:
+            self._pw, self._ctx = self._launch(self.headless)
+            self._started = time.time()
+            page = self._ctx.pages[0] if self._ctx.pages else self._ctx.new_page()
+        try:
+            yield page
+        except BrowserError:
+            raise
+        except Exception:
+            self.close()  # что-то сломалось в самом браузере — в следующий раз поднимем заново
+            raise
+
+    def close(self) -> None:
+        for obj, method in ((self._ctx, "close"), (self._pw, "stop")):
+            if obj is not None:
+                try:
+                    getattr(obj, method)()
+                except Exception:  # noqa: BLE001
+                    pass
+        self._ctx = self._pw = None
+
+    # ─── пульт: управление кабинетом с телефона ──────────────────────────────
+    def screenshot(self) -> bytes:
+        with self._page() as page:
+            return page.screenshot()
+
+    def current_url(self) -> str:
+        with self._page() as page:
+            return page.url
+
+    def open(self, target: str) -> bytes:
+        url = {"reviews": self.urls["review"], "questions": self.urls["question"]}.get(target, target)
+        if not re.match(r"https?://", url or ""):
+            url = "https://" + url
+        with self._page() as page:
+            page.goto(url, wait_until="domcontentloaded")
+            _settle(page)
+            return page.screenshot()
+
+    def click_text(self, text: str) -> bytes:
+        with self._page() as page:
+            candidates = [
+                page.get_by_role("button", name=text),
+                page.get_by_placeholder(text),
+                page.get_by_label(text),
+                page.get_by_text(text),
+            ]
+            for loc in candidates:
+                try:
+                    visible = loc.locator("visible=true")
+                    if visible.count():
+                        visible.first.click(timeout=10000)
+                        break
+                except Exception:  # noqa: BLE001
+                    continue
+            else:
+                raise BrowserError(f"Не нашёл на странице «{text}». Пришли /screen и посмотри, как оно написано.")
+            _settle(page)
+            return page.screenshot()
+
+    def type_text(self, text: str) -> bytes:
+        with self._page() as page:
+            page.keyboard.type(text, delay=60)
+            page.wait_for_timeout(800)
+            return page.screenshot()
+
+    def press(self, key: str) -> bytes:
+        with self._page() as page:
+            page.keyboard.press(key)
+            _settle(page)
+            return page.screenshot()
 
     # ─── вход ────────────────────────────────────────────────────────────────
     def login(self) -> None:
@@ -123,8 +229,8 @@ class OzonBrowser:
         return items[: self.limit]
 
     def _ensure_logged_in(self, page) -> None:
-        if re.search(r"/signin|/login|id\.ozon\.ru", page.url):
-            raise BrowserError("Кабинет Ozon просит войти. Запусти `python -m ozon_bot login` и войди один раз.")
+        if re.search(r"/signin|/login|/auth(?:[/?#]|$)|id\.ozon\.ru", page.url):
+            raise LoginRequired("Кабинет Ozon просит войти заново.")
 
     def _from_dom(self, page, kind: str) -> list[Item]:
         items = []
@@ -312,3 +418,12 @@ def _first_text(card, selector: str | None) -> str:
         return loc.first.inner_text(timeout=1000).strip() if loc.count() else ""
     except Exception:  # noqa: BLE001
         return ""
+
+
+def _settle(page) -> None:
+    """Даём странице догрузиться, но не ждём вечно: у кабинета бывают бесконечные фоновые запросы."""
+    try:
+        page.wait_for_load_state("networkidle", timeout=10000)
+    except Exception:  # noqa: BLE001
+        pass
+    page.wait_for_timeout(700)

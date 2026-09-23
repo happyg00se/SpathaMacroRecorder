@@ -45,7 +45,7 @@ def load_config(path: str | Path = "config.yaml") -> dict:
 
 
 def validate(cfg: dict) -> None:
-    source = cfg.get("source", "api")
+    source = cfg.get("source", "browser")
     if source not in ("api", "browser"):
         raise ConfigError("source должен быть api или browser")
     if source == "api":

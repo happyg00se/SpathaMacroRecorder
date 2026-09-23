@@ -125,3 +125,92 @@ def test_stranger_gets_chat_id_only(tmp_path):
     assert "99" in app.tg.sent[0][1] and app.tg.sent[0][0] == 99
     app.handle_update({"update_id": 2, "message": {"chat": {"id": 99}, "text": "/check"}})
     assert len(app.tg.sent) == 1 and app.jobs.empty()
+
+
+class BrowserSource(Source):
+    def __init__(self, items):
+        super().__init__(items)
+        self.actions = []
+        self.login_needed = False
+
+    def fetch_new(self):
+        from ozon_bot.ozon_browser import LoginRequired
+        if self.login_needed:
+            raise LoginRequired("войди")
+        return super().fetch_new()
+
+    def screenshot(self):
+        self.actions.append("screen")
+        return b"png"
+
+    def open(self, target):
+        self.actions.append(("open", target))
+        return b"png"
+
+    def click_text(self, text):
+        self.actions.append(("click", text))
+        return b"png"
+
+    def type_text(self, text):
+        self.actions.append(("type", text))
+        return b"png"
+
+    def press(self, key):
+        self.actions.append(("key", key))
+        return b"png"
+
+    def current_url(self):
+        return "https://seller.ozon.ru/app/reviews"
+
+
+class PhotoTG(TG):
+    def __init__(self):
+        super().__init__()
+        self.photos = []
+
+    def send_photo(self, chat, photo, caption=""):
+        self.photos.append((chat, caption))
+
+    def typing(self, chat):
+        pass
+
+
+def test_remote_control_from_phone(tmp_path):
+    cfg = {"telegram": {"allowed_chat_ids": [42]}}
+    app = App(cfg, BrowserSource([]), LLM({}), PhotoTG(), Storage(tmp_path / "db.sqlite3"))
+    for text in ["/login", "/click Телефон", "/type 9991234567", "/key Enter", "/screen", "/open questions"]:
+        app.on_message(42, text)
+    run_jobs(app)
+    assert app.source.actions == [
+        ("open", "reviews"), ("click", "Телефон"), ("type", "9991234567"), ("key", "Enter"), "screen", ("open", "questions"),
+    ]
+    assert len(app.tg.photos) == 6 and "seller.ozon.ru" in app.tg.photos[0][1]
+    app.on_message(42, "/click")  # без текста — подсказка, а не действие
+    assert app.jobs.empty()
+
+
+def test_login_alert_sent_once_then_recovered(tmp_path):
+    cfg = {"telegram": {"allowed_chat_ids": [42]}}
+    app = App(cfg, BrowserSource([]), LLM({}), PhotoTG(), Storage(tmp_path / "db.sqlite3"))
+    app.source.login_needed = True
+    app.check()
+    app.check()
+    assert sum("войти" in t for _, t, _ in app.tg.sent) == 1
+    app.source.login_needed = False
+    app.check()
+    assert "Вход в кабинет Ozon есть" in app.tg.sent[-1][1]
+
+
+def test_free_text_goes_to_assistant(tmp_path):
+    class ChatLLM(LLM):
+        def chat(self, messages):
+            self.last = messages
+            return "Предлагаю ответить так: <спасибо>"
+
+    cfg = {"telegram": {"allowed_chat_ids": [42]}, "shop": {"name": "Наклейки"}}
+    app = App(cfg, BrowserSource([]), ChatLLM({}), PhotoTG(), Storage(tmp_path / "db.sqlite3"))
+    app.on_message(42, "как ответить на жалобу про клей?")
+    run_jobs(app)
+    assert app.llm.last[0]["role"] == "system" and "Наклейки" in app.llm.last[0]["content"]
+    assert app.llm.last[-1]["content"] == "как ответить на жалобу про клей?"
+    assert app.tg.sent[-1][1] == "Предлагаю ответить так: &lt;спасибо&gt;"

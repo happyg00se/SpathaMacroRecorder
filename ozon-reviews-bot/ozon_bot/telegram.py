@@ -57,6 +57,26 @@ class Telegram:
         }
         self.call("editMessageText", **params)
 
+    def send_photo(self, chat_id: int, photo: bytes, caption: str = "") -> None:
+        try:
+            resp = self.http.post(
+                self.base + "sendPhoto",
+                data={"chat_id": chat_id, "caption": caption[:1024], "parse_mode": "HTML"},
+                files={"photo": ("screen.png", photo, "image/png")},
+                timeout=60,
+            )
+            if not resp.json().get("ok"):
+                log.warning("Telegram sendPhoto: %s", resp.text[:200])
+        except (requests.RequestException, ValueError) as e:
+            log.warning("Telegram sendPhoto: %s", str(e).replace(self.token, "***"))
+
+    def typing(self, chat_id: int) -> None:
+        self.call("sendChatAction", chat_id=chat_id, action="typing")
+
+    def set_commands(self, commands: list[tuple[str, str]]) -> None:
+        """Меню команд, которое Telegram показывает у поля ввода на телефоне и маке."""
+        self.call("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands])
+
     def answer_callback(self, callback_id: str, text: str = "") -> None:
         self.call("answerCallbackQuery", callback_query_id=callback_id, text=text[:200])
 
