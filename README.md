@@ -3,6 +3,8 @@
 A keyboard and mouse macro recorder for Windows 10/11, built for the ASUS ROG Spatha X and
 working independently of Armoury Crate.
 
+> В этом же репозитории лежит [бот ответов на отзывы Ozon](ozon-reviews-bot/README.md) — отдельный проект на Python.
+
 ## Disclaimer
 
 Macros may violate the rules of specific games. Responsibility for using this tool lies with

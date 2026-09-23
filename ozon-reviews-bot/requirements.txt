@@ -1,0 +1,4 @@
+requests>=2.31
+PyYAML>=6.0
+# Нужен только для режима source: browser (чтение кабинета через Chrome).
+playwright>=1.44
