@@ -22,6 +22,12 @@ internal static class GameLaunch
 {
     internal const string GameArgument = "--game";
 
+    /// <summary>
+    /// «--watch-game helldivers2»: следить за уже запущенной игрой и закрыться вместе с ней, не
+    /// запуская её. Так перезапускается программа после обновления, если её открыл Steam.
+    /// </summary>
+    internal const string WatchArgument = "--watch-game";
+
     /// <summary>Команда запуска игры, полученная от Steam.</summary>
     internal sealed record Request(string ExecutablePath, IReadOnlyList<string> Arguments)
     {
@@ -52,6 +58,21 @@ internal static class GameLaunch
             return executable.Length == 0
                 ? null
                 : new Request(executable, args.Skip(i + 2).ToArray());
+        }
+
+        return null;
+    }
+
+    /// <summary>Имя процесса игры после --watch-game, либо null.</summary>
+    internal static string? ParseWatch(IReadOnlyList<string> args)
+    {
+        for (int i = 0; i < args.Count - 1; i++)
+        {
+            if (string.Equals(args[i], WatchArgument, StringComparison.OrdinalIgnoreCase))
+            {
+                string name = GameWatcher.NormalizeProcessName(args[i + 1]);
+                return name.Length == 0 ? null : name;
+            }
         }
 
         return null;

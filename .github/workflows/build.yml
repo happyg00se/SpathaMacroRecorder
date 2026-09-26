@@ -30,8 +30,20 @@ jobs:
       - name: Тесты
         run: dotnet test -c Release
 
+      # У релиза номер версии в exe берётся из номера релиза: по нему программа у пользователей
+      # понимает, что вышло обновление. Руками в проекте его поднимать не нужно.
       - name: Сборка одного exe
-        run: dotnet publish src/SpathaMacroRecorder -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+        run: |
+          $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } elseif ("${{ inputs.release }}" -ne "") { "v${{ inputs.release }}" } else { "" }
+          $props = @()
+          if ($tag -ne "") {
+            $version = $tag -replace '^v', ''
+            if ($version -notmatch '\.') { $version = "$version.0" }
+            $numeric = [Version]::new($version)
+            $full = "{0}.{1}.{2}.{3}" -f $numeric.Major, [Math]::Max($numeric.Minor, 0), [Math]::Max($numeric.Build, 0), [Math]::Max($numeric.Revision, 0)
+            $props = @("-p:Version=$full", "-p:FileVersion=$full", "-p:AssemblyVersion=$full", "-p:InformationalVersion=Release $version")
+          }
+          dotnet publish src/SpathaMacroRecorder -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true @props
 
       # Тег ставит сам GitHub при создании релиза, поэтому отдельно его пушить не нужно.
       - name: Релиз
@@ -45,7 +57,7 @@ jobs:
             --target "${{ github.sha }}" `
             "src/SpathaMacroRecorder/bin/Release/net10.0-windows/win-x64/publish/SpathaMacroRecorder.exe" `
             --title "Release $version" `
-            --notes "Готовая программа: скачайте SpathaMacroRecorder.exe ниже и положите в постоянную папку, например C:\Spatha. Устанавливать ничего не нужно."
+            --notes "Готовая программа: скачайте SpathaMacroRecorder.exe ниже и положите в постоянную папку, например C:\Spatha. Устанавливать ничего не нужно. Если программа уже стоит — нажмите в ней «Обновить»."
 
       - uses: actions/upload-artifact@v4
         with:

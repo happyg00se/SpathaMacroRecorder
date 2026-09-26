@@ -1,3 +1,5 @@
+using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,6 +24,7 @@ internal partial class MainViewModel : ObservableObject
     private readonly GlobalMouseHook _mouseHook;
     private readonly GameWatcher _gameWatcher;
     private readonly InputDiagnostics _diagnostics;
+    private readonly UpdateService _updates;
     private readonly DispatcherTimer _diagnosticsTimer;
     private readonly Dispatcher _dispatcher;
 
@@ -68,7 +71,8 @@ internal partial class MainViewModel : ObservableObject
         GlobalMouseHook mouseHook,
         GameWatcher gameWatcher,
         InputDiagnostics diagnostics,
-        MouseHeroViewModel mouseHero)
+        MouseHeroViewModel mouseHero,
+        UpdateService updates)
     {
         ProfileList = profileList;
         MacroEditor = macroEditor;
@@ -81,6 +85,7 @@ internal partial class MainViewModel : ObservableObject
         _mouseHook = mouseHook;
         _gameWatcher = gameWatcher;
         _diagnostics = diagnostics;
+        _updates = updates;
         _dispatcher = Application.Current.Dispatcher;
 
         _diagnosticsTimer = new DispatcherTimer(
@@ -115,7 +120,107 @@ internal partial class MainViewModel : ObservableObject
         _triggerBinding.TriggerReleased += OnTriggerReleased;
 
         MacroEditor.SetProfile(ProfileList.SelectedProfile);
+
+        // Тихая проверка при запуске: вышла новая версия — кнопка обновления подсвечивается.
+        AppText.Instance.PropertyChanged += (_, _) => OnPropertyChanged(nameof(UpdateButtonText));
+        _ = CheckForUpdateQuietlyAsync();
     }
+
+    // --- Обновление ----------------------------------------------------------------------
+
+    /// <summary>Найденный при проверке новый релиз; null — не проверяли или новее нет.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
+    [NotifyPropertyChangedFor(nameof(IsUpdateAvailable))]
+    private UpdateInfo? _availableUpdate;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
+    [NotifyCanExecuteChangedFor(nameof(UpdateCommand))]
+    private bool _isUpdating;
+
+    /// <summary>Сколько скачано, 0–100; показывается на кнопке во время загрузки.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
+    private int _updateProgress;
+
+    public bool IsUpdateAvailable => AvailableUpdate is not null;
+
+    public string UpdateButtonText => IsUpdating
+        ? string.Format(AppText.Instance["UpdateDownloading"], UpdateProgress)
+        : AvailableUpdate is { } update
+            ? string.Format(AppText.Instance["UpdateTo"], update.Title)
+            : AppText.Instance["UpdateCheck"];
+
+    private async Task CheckForUpdateQuietlyAsync()
+    {
+        try
+        {
+            AvailableUpdate = await _updates.CheckAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            // Нет интернета или GitHub не ответил — не беда, кнопка проверит ещё раз по нажатию.
+        }
+    }
+
+    /// <summary>
+    /// Одна кнопка на всё: проверяет GitHub, спрашивает подтверждение, скачивает, ставит
+    /// и перезапускает программу.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanUpdate))]
+    private async Task UpdateAsync()
+    {
+        var owner = Application.Current.MainWindow;
+        string title = AppText.Instance["UpdateTitle"];
+        IsUpdating = true;
+        UpdateProgress = 0;
+        try
+        {
+            var update = await _updates.CheckAsync();
+            AvailableUpdate = update;
+            if (update is null)
+            {
+                MessageBox.Show(owner, string.Format(AppText.Instance["UpdateLatest"], AppInfo.ReleaseName), title,
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (MessageBox.Show(owner, string.Format(AppText.Instance["UpdateAsk"], update.Title, AppInfo.ReleaseName), title,
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            _macroPlayer.Stop();
+            var progress = new Progress<double>(p => UpdateProgress = (int)(p * 100));
+            string exePath = await _updates.DownloadAndInstallAsync(update, progress);
+
+            UpdateService.Restart(exePath, App.CompanionGame);
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            MessageBox.Show(owner, string.Format(AppText.Instance["UpdateNoNetwork"], ex.Message), title,
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            MessageBox.Show(owner, string.Format(AppText.Instance["UpdateNoAccess"], ex.Message), title,
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(owner, string.Format(AppText.Instance["UpdateBadFile"], ex.Message), title,
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsUpdating = false;
+        }
+    }
+
+    private bool CanUpdate => !IsUpdating;
 
     /// <summary>
     /// Физическая кнопка нажата: ищем в текущем профиле макрос с таким триггером и запускаем.
