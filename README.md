@@ -87,14 +87,17 @@ Left, right and wheel click need no setup.
 ## Built-in stratagems
 
 Every Helldivers 2 stratagem from the [wiki](https://helldivers.wiki.gg/wiki/Stratagems/ru) is built
-in: 63 of them, from support weapons to mission stratagems. Nothing has to be recorded.
+in: 114 of them — orbital strikes, Eagle, support weapons, backpacks, vehicles, sentries,
+emplacements and mission stratagems. Nothing has to be recorded.
 
 1. Click a marker on the main screen.
-2. Type part of the name in the search box above the list — `лазер`, `AC-8`, `пулемёт`. Case,
-   `ё` and dashes do not matter. Enter picks the first match; a click picks any.
+2. Type part of the name in the search box above the list, in English or Russian —
+   `orbital laser`, `лазер`, `AC-8`, `guard dog`. Case, `ё` and dashes do not matter. Enter picks
+   the first match; a click picks any.
 
-Every row shows the stratagem's in-game icon and its code in arrows, and the icon of the stratagem
-on the button is shown above the search box. The icons come from the open
+Names follow the interface language (Preferences). Every row shows the stratagem's in-game icon,
+its section and its code in arrows, and the icon of the stratagem on the button is shown above the
+search box. The icons come from the open
 [Helldivers 2 stratagem icon set](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg),
 converted to PNG and built into the exe.
 
@@ -102,6 +105,10 @@ The chosen stratagem becomes an ordinary macro in the current profile and is bou
 It types the code with the **keyboard arrow keys** only (never WASD), 30 ms before every press and
 release. Hold Ctrl as usual and press the mouse button. The macro can be edited in Settings like any
 other; picking the same stratagem again reuses it instead of creating a copy.
+
+Stratagem macros made by Release 2.0 are updated when the profile opens: they get the new name, and
+the new code where the game changed it (B-1 Supply Pack, SSSD Delivery). Macros whose steps you
+edited by hand are left as they are.
 
 ## Pause between key presses
 

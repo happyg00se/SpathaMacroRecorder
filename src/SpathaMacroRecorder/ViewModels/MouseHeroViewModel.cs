@@ -128,6 +128,16 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
             }
         };
 
+        // Названия стратагем в списке — на языке интерфейса: при смене языка список пересобирается.
+        AppText.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(AppText.Language))
+            {
+                OnPropertyChanged(nameof(AssignedMacroTitle));
+                RebuildChoices();
+            }
+        };
+
         Refresh();
     }
 
@@ -237,12 +247,14 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
         var inProfile = new HashSet<Stratagem>();
         foreach (var macro in profile.Macros)
         {
+            string searchText = macro.Name;
             if (StratagemCatalog.ForMacro(macro) is { } stratagem)
             {
                 inProfile.Add(stratagem);
+                searchText += " " + StratagemCatalog.SearchText(stratagem);
             }
 
-            if (StratagemCatalog.Matches(macro.Name, query))
+            if (StratagemCatalog.Matches(searchText, query))
             {
                 MacroChoices.Add(MacroChoice.ForMacro(macro, ReferenceEquals(macro, assigned)));
             }

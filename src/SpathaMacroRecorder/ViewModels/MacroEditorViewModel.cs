@@ -36,8 +36,17 @@ internal partial class MacroEditorViewModel : ObservableObject
 
     public void SetProfile(MacroProfile? profile)
     {
+        // Макросы стратагем из прошлых версий — к нынешним названиям и кодам. До показа:
+        // Macro об изменении имени не сообщает, и список увидел бы старое.
+        bool upgraded = profile is not null && StratagemCatalog.Upgrade(profile);
+
         CurrentProfile = profile;
         SelectedMacro = profile?.Macros.FirstOrDefault();
+
+        if (upgraded)
+        {
+            SaveCurrentProfile();
+        }
     }
 
     internal void SaveCurrentProfile()
