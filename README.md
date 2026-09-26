@@ -93,6 +93,11 @@ in: 63 of them, from support weapons to mission stratagems. Nothing has to be re
 2. Type part of the name in the search box above the list — `лазер`, `AC-8`, `пулемёт`. Case,
    `ё` and dashes do not matter. Enter picks the first match; a click picks any.
 
+Every row shows the stratagem's in-game icon and its code in arrows, and the icon of the stratagem
+on the button is shown above the search box. The icons come from the open
+[Helldivers 2 stratagem icon set](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg),
+converted to PNG and built into the exe.
+
 The chosen stratagem becomes an ordinary macro in the current profile and is bound to the button.
 It types the code with the **keyboard arrow keys** only (never WASD), 30 ms before every press and
 release. Hold Ctrl as usual and press the mouse button. The macro can be edited in Settings like any

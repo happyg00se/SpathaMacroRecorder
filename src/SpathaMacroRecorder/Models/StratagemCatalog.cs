@@ -21,92 +21,98 @@ public enum StratagemGroup
 
 /// <summary>
 /// Стратагема Helldivers 2. Code — стрелки кода по порядку: U — вверх, D — вниз,
-/// L — влево, R — вправо.
+/// L — влево, R — вправо. Icon — имя картинки в Resources/Stratagems без расширения.
 /// </summary>
-public sealed record Stratagem(string Name, StratagemGroup Group, string Code)
+public sealed record Stratagem(string Name, StratagemGroup Group, string Code, string Icon)
 {
     /// <summary>Код стрелками, как он нарисован в игре: «↓←↓↑→».</summary>
     public string Arrows => StratagemCatalog.ToArrows(Code);
+
+    /// <summary>Значок из игры, встроенный в exe.</summary>
+    public string IconUri => $"pack://application:,,,/SpathaMacroRecorder;component/Resources/Stratagems/{Icon}.png";
 }
 
 /// <summary>
 /// Встроенный список стратагем и превращение стратагемы в макрос. Названия и коды —
-/// с русской страницы вики: https://helldivers.wiki.gg/wiki/Stratagems/ru.
+/// с русской страницы вики: https://helldivers.wiki.gg/wiki/Stratagems/ru. Значки —
+/// из открытого набора https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg,
+/// переведённые в PNG 64×64: WPF сам SVG не рисует. У «Доставки SSSD» своего значка в наборе
+/// нет, в игре у неё тот же, что у «Загрузить данные».
 /// </summary>
 public static class StratagemCatalog
 {
     public static IReadOnlyList<Stratagem> All { get; } =
     [
         // Оружие поддержки и рюкзаки
-        new("MG-43 «Пулемёт»", StratagemGroup.Supply, "DLDUR"),
-        new("APW-1 «Крупнокалиберная винтовка»", StratagemGroup.Supply, "DLRUD"),
-        new("M-105 «Доблесть»", StratagemGroup.Supply, "DLDUUL"),
-        new("EAT-17 «Одноразовый бронебой»", StratagemGroup.Supply, "DDLUR"),
-        new("GR-8 «Безоткатная винтовка»", StratagemGroup.Supply, "DLRRL"),
-        new("FLAM-40 «Огнемёт»", StratagemGroup.Supply, "DLUDU"),
-        new("AC-8 «Автопушка»", StratagemGroup.Supply, "DLDUUR"),
-        new("MG-206 «Тяжёлый пулемёт»", StratagemGroup.Supply, "DLUDD"),
-        new("RL-77 «Ракетница с подрывом в воздухе»", StratagemGroup.Supply, "DUULR"),
-        new("RS-422 «Рельсотрон»", StratagemGroup.Supply, "DRDULR"),
-        new("FAF-14 «Копьё»", StratagemGroup.Supply, "DDUDD"),
-        new("Ранец для прыжков Lift-850", StratagemGroup.Supply, "DUUDU"),
-        new("Ящик с припасами B-1", StratagemGroup.Supply, "DLDUUR"),
-        new("Гранатомет GL-21", StratagemGroup.Supply, "DLULD"),
-        new("LAS-98 Laser Cannon", StratagemGroup.Supply, "DLDUL"),
-        new("AX/LAS-5 «Страж»", StratagemGroup.Supply, "DULURR"),
-        new("Рюкзак с баллистическим щитом SH-20", StratagemGroup.Supply, "DLDDUL"),
-        new("Дуговой метатель ARC-3", StratagemGroup.Supply, "DRDULL"),
-        new("Квазарная пушка LAS-99", StratagemGroup.Supply, "DDULR"),
-        new("Щит-генератор SH-32", StratagemGroup.Supply, "DULRLR"),
-        new("AX/AR-23 «Дозорный»", StratagemGroup.Supply, "DULURD"),
-        new("Экзокостюм EXO-45 Patriot", StratagemGroup.Supply, "LDRULDD"),
+        new("MG-43 «Пулемёт»", StratagemGroup.Supply, "DLDUR", "machine-gun"),
+        new("APW-1 «Крупнокалиберная винтовка»", StratagemGroup.Supply, "DLRUD", "anti-materiel-rifle"),
+        new("M-105 «Доблесть»", StratagemGroup.Supply, "DLDUUL", "stalwart"),
+        new("EAT-17 «Одноразовый бронебой»", StratagemGroup.Supply, "DDLUR", "expendable-anti-tank"),
+        new("GR-8 «Безоткатная винтовка»", StratagemGroup.Supply, "DLRRL", "recoilless-rifle"),
+        new("FLAM-40 «Огнемёт»", StratagemGroup.Supply, "DLUDU", "flamethrower"),
+        new("AC-8 «Автопушка»", StratagemGroup.Supply, "DLDUUR", "autocannon"),
+        new("MG-206 «Тяжёлый пулемёт»", StratagemGroup.Supply, "DLUDD", "heavy-machine-gun"),
+        new("RL-77 «Ракетница с подрывом в воздухе»", StratagemGroup.Supply, "DUULR", "airburst-rocket-launcher"),
+        new("RS-422 «Рельсотрон»", StratagemGroup.Supply, "DRDULR", "railgun"),
+        new("FAF-14 «Копьё»", StratagemGroup.Supply, "DDUDD", "spear"),
+        new("Ранец для прыжков Lift-850", StratagemGroup.Supply, "DUUDU", "jump-pack"),
+        new("Ящик с припасами B-1", StratagemGroup.Supply, "DLDUUR", "supply-pack"),
+        new("Гранатомет GL-21", StratagemGroup.Supply, "DLULD", "grenade-launcher"),
+        new("LAS-98 Laser Cannon", StratagemGroup.Supply, "DLDUL", "laser-cannon"),
+        new("AX/LAS-5 «Страж»", StratagemGroup.Supply, "DULURR", "guard-dog-rover"),
+        new("Рюкзак с баллистическим щитом SH-20", StratagemGroup.Supply, "DLDDUL", "ballistic-shield-backpack"),
+        new("Дуговой метатель ARC-3", StratagemGroup.Supply, "DRDULL", "arc-thrower"),
+        new("Квазарная пушка LAS-99", StratagemGroup.Supply, "DDULR", "quasar-cannon"),
+        new("Щит-генератор SH-32", StratagemGroup.Supply, "DULRLR", "shield-generator-pack"),
+        new("AX/AR-23 «Дозорный»", StratagemGroup.Supply, "DULURD", "guard-dog"),
+        new("Экзокостюм EXO-45 Patriot", StratagemGroup.Supply, "LDRULDD", "patriot-exosuit"),
 
         // Орбитальные удары и «Орёл»
-        new("Орбитальный заградительный огонь Гатлинга", StratagemGroup.Offensive, "RDLUU"),
-        new("Орбитальный удар с подрывом в воздухе", StratagemGroup.Offensive, "RRR"),
-        new("Орбитальная 120-мм осколочно-фугасная заградительная батарея", StratagemGroup.Offensive, "RRDLRD"),
-        new("Орбитальная 380-мм HE-бомба", StratagemGroup.Offensive, "RDUULDD"),
-        new("Орбитальный заградительный огонь", StratagemGroup.Offensive, "RDRDRD"),
-        new("Орбитальный лазер", StratagemGroup.Offensive, "RDURD"),
-        new("Удар орбитальной рельсопушкой", StratagemGroup.Offensive, "RUDDR"),
-        new("Вираж орла", StratagemGroup.Offensive, "URR"),
-        new("Eagle Airstrike", StratagemGroup.Offensive, "URDR"),
-        new("Орлиная кассетная бомба", StratagemGroup.Offensive, "URDDR"),
-        new("Напалмовый авиаудар орла", StratagemGroup.Offensive, "URDU"),
-        new("Дымовая завеса орла", StratagemGroup.Offensive, "URUD"),
-        new("110-мм ракетные блоки «Орла»", StratagemGroup.Offensive, "URUL"),
-        new("Бомба «Игл» весом 500 кг", StratagemGroup.Offensive, "URDDD"),
-        new("Орбитальный высокоточный удар", StratagemGroup.Offensive, "RRU"),
-        new("Орбитальный газовый удар", StratagemGroup.Offensive, "RRDR"),
-        new("Орбитальный удар по электромагнитному полю", StratagemGroup.Offensive, "RRLD"),
-        new("Орбитальный дымовой удар", StratagemGroup.Offensive, "RRDU"),
+        new("Орбитальный заградительный огонь Гатлинга", StratagemGroup.Offensive, "RDLUU", "orbital-gatling-barrage"),
+        new("Орбитальный удар с подрывом в воздухе", StratagemGroup.Offensive, "RRR", "orbital-airburst-strike"),
+        new("Орбитальная 120-мм осколочно-фугасная заградительная батарея", StratagemGroup.Offensive, "RRDLRD", "orbital-120mm-he-barrage"),
+        new("Орбитальная 380-мм HE-бомба", StratagemGroup.Offensive, "RDUULDD", "orbital-380mm-he-barrage"),
+        new("Орбитальный заградительный огонь", StratagemGroup.Offensive, "RDRDRD", "orbital-walking-barrage"),
+        new("Орбитальный лазер", StratagemGroup.Offensive, "RDURD", "orbital-laser"),
+        new("Удар орбитальной рельсопушкой", StratagemGroup.Offensive, "RUDDR", "orbital-railcannon-strike"),
+        new("Вираж орла", StratagemGroup.Offensive, "URR", "eagle-strafing-run"),
+        new("Eagle Airstrike", StratagemGroup.Offensive, "URDR", "eagle-airstrike"),
+        new("Орлиная кассетная бомба", StratagemGroup.Offensive, "URDDR", "eagle-cluster-bomb"),
+        new("Напалмовый авиаудар орла", StratagemGroup.Offensive, "URDU", "eagle-napalm-airstrike"),
+        new("Дымовая завеса орла", StratagemGroup.Offensive, "URUD", "eagle-smoke-strike"),
+        new("110-мм ракетные блоки «Орла»", StratagemGroup.Offensive, "URUL", "eagle-110mm-rocket-pods"),
+        new("Бомба «Игл» весом 500 кг", StratagemGroup.Offensive, "URDDD", "eagle-500kg-bomb"),
+        new("Орбитальный высокоточный удар", StratagemGroup.Offensive, "RRU", "orbital-precision-strike"),
+        new("Орбитальный газовый удар", StratagemGroup.Offensive, "RRDR", "orbital-gas-strike"),
+        new("Орбитальный удар по электромагнитному полю", StratagemGroup.Offensive, "RRLD", "orbital-ems-strike"),
+        new("Орбитальный дымовой удар", StratagemGroup.Offensive, "RRDU", "orbital-smoke-strike"),
 
         // Оборона
-        new("Расстановка крупнокалиберных пулеметов E/MG-101", StratagemGroup.Defensive, "DULRRL"),
-        new("Реле генератора щита FX-12", StratagemGroup.Defensive, "DDLRLR"),
-        new("Башня Теслы A/ARC-3", StratagemGroup.Defensive, "DURULR"),
-        new("Противопехотное минное поле MD-6", StratagemGroup.Defensive, "DLUR"),
-        new("MD-I4 Incendiary Mines", StratagemGroup.Defensive, "DLLD"),
-        new("A/MG-43 Machine Gun Sentry", StratagemGroup.Defensive, "DURRU"),
-        new("A/G-16 Gatling Sentry", StratagemGroup.Defensive, "DURL"),
-        new("A/M-12 «Минометный дозор»", StratagemGroup.Defensive, "DURRD"),
-        new("A/AC-8 Автопушечный дозор", StratagemGroup.Defensive, "DURULU"),
-        new("A/MLS-4X «Ракетный дозор»", StratagemGroup.Defensive, "DURRL"),
-        new("A/M-23 «Минометный дозор»", StratagemGroup.Defensive, "DURDR"),
+        new("Расстановка крупнокалиберных пулеметов E/MG-101", StratagemGroup.Defensive, "DULRRL", "hmg-emplacement"),
+        new("Реле генератора щита FX-12", StratagemGroup.Defensive, "DDLRLR", "shield-generator-relay"),
+        new("Башня Теслы A/ARC-3", StratagemGroup.Defensive, "DURULR", "tesla-tower"),
+        new("Противопехотное минное поле MD-6", StratagemGroup.Defensive, "DLUR", "anti-personnel-minefield"),
+        new("MD-I4 Incendiary Mines", StratagemGroup.Defensive, "DLLD", "incendiary-mines"),
+        new("A/MG-43 Machine Gun Sentry", StratagemGroup.Defensive, "DURRU", "machine-gun-sentry"),
+        new("A/G-16 Gatling Sentry", StratagemGroup.Defensive, "DURL", "gatling-sentry"),
+        new("A/M-12 «Минометный дозор»", StratagemGroup.Defensive, "DURRD", "mortar-sentry"),
+        new("A/AC-8 Автопушечный дозор", StratagemGroup.Defensive, "DURULU", "autocannon-sentry"),
+        new("A/MLS-4X «Ракетный дозор»", StratagemGroup.Defensive, "DURRL", "rocket-sentry"),
+        new("A/M-23 «Минометный дозор»", StratagemGroup.Defensive, "DURDR", "ems-mortar-sentry"),
 
         // Задание
-        new("Подкрепление", StratagemGroup.Mission, "UDRLU"),
-        new("Сигнал SOS", StratagemGroup.Mission, "UDRU"),
-        new("Пополнение запасов", StratagemGroup.Mission, "DDUR"),
-        new("Перезарядка «Орла»", StratagemGroup.Mission, "UULUR"),
-        new("Доставка SSSD", StratagemGroup.Mission, "DDDUU"),
-        new("Разведочное бурение", StratagemGroup.Mission, "DDLRDD"),
-        new("Флаг суперземли", StratagemGroup.Mission, "DUDU"),
-        new("Адская бомба", StratagemGroup.Mission, "DULDURDU"),
-        new("Загрузить данные", StratagemGroup.Mission, "LRUUU"),
-        new("Сейсмический зонд", StratagemGroup.Mission, "UULRDD"),
-        new("Орбитальная осветительная ракета", StratagemGroup.Mission, "RRLL"),
-        new("Артиллерия SEAF", StratagemGroup.Mission, "RUUD"),
+        new("Подкрепление", StratagemGroup.Mission, "UDRLU", "reinforce"),
+        new("Сигнал SOS", StratagemGroup.Mission, "UDRU", "sos-beacon"),
+        new("Пополнение запасов", StratagemGroup.Mission, "DDUR", "resupply"),
+        new("Перезарядка «Орла»", StratagemGroup.Mission, "UULUR", "eagle-rearm"),
+        new("Доставка SSSD", StratagemGroup.Mission, "DDDUU", "upload-data"),
+        new("Разведочное бурение", StratagemGroup.Mission, "DDLRDD", "prospecting-drill"),
+        new("Флаг суперземли", StratagemGroup.Mission, "DUDU", "super-earth-flag"),
+        new("Адская бомба", StratagemGroup.Mission, "DULDURDU", "hellbomb"),
+        new("Загрузить данные", StratagemGroup.Mission, "LRUUU", "upload-data"),
+        new("Сейсмический зонд", StratagemGroup.Mission, "UULRDD", "seismic-probe"),
+        new("Орбитальная осветительная ракета", StratagemGroup.Mission, "RRLL", "orbital-illumination-flare"),
+        new("Артиллерия SEAF", StratagemGroup.Mission, "RUUD", "seaf-artillery"),
     ];
 
     /// <summary>

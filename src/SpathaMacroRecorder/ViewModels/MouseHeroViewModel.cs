@@ -84,6 +84,11 @@ internal sealed class MacroChoice
         : Macro is null ? string.Empty : AppText.Instance["OwnMacro"];
 
     public bool HasDetails => Details.Length > 0;
+
+    /// <summary>Значок стратагемы; у своих макросов и у снятия привязки его нет.</summary>
+    public string? IconUri => Stratagem?.IconUri;
+
+    public bool HasIcon => Stratagem is not null;
 }
 
 /// <summary>
@@ -206,6 +211,8 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
 
         OnPropertyChanged(nameof(AssignedMacro));
         OnPropertyChanged(nameof(AssignedMacroTitle));
+        OnPropertyChanged(nameof(AssignedIconUri));
+        OnPropertyChanged(nameof(HasAssignedIcon));
         NotifyPlaybackSettingsChanged();
         RebuildChoices();
     }
@@ -257,6 +264,11 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
 
     /// <summary>Что висит на кнопке сейчас — строкой над поиском.</summary>
     public string AssignedMacroTitle => AssignedMacro?.Name ?? AppText.Instance["NotAssigned"];
+
+    /// <summary>Значок стратагемы на кнопке, если на ней стратагема.</summary>
+    public string? AssignedIconUri => AssignedMacro is { } macro ? StratagemCatalog.ForMacro(macro)?.IconUri : null;
+
+    public bool HasAssignedIcon => AssignedIconUri is not null;
 
     public bool HasNoMatches => MacroChoices.Count == 0 && _editor.CurrentProfile is not null;
 

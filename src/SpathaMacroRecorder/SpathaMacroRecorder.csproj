@@ -44,6 +44,8 @@
          отдельного файла рядом с программой. -->
     <Resource Include="Resources\spatha.png" />
     <Resource Include="Resources\spatha.ico" />
+    <!-- Значки стратагем для списка у кнопки мыши. -->
+    <Resource Include="Resources\Stratagems\*.png" />
   </ItemGroup>
 
   <ItemGroup>

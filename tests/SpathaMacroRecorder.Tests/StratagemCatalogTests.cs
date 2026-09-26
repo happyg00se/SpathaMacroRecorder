@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Resources;
 using SpathaMacroRecorder.Models;
 
 namespace SpathaMacroRecorder.Tests;
@@ -21,6 +23,19 @@ public sealed class StratagemCatalogTests
     public void Codes_UseOnlyTheFourDirections()
     {
         Assert.All(StratagemCatalog.All, s => Assert.Matches("^[UDLR]{3,8}$", s.Code));
+    }
+
+    [Fact]
+    public void Icons_AreEmbeddedForEveryStratagem()
+    {
+        // WPF кладёт Resource-файлы в «<сборка>.g.resources» под путями в нижнем регистре.
+        var assembly = typeof(StratagemCatalog).Assembly;
+        using var stream = assembly.GetManifestResourceStream("SpathaMacroRecorder.g.resources");
+        Assert.NotNull(stream);
+        using var reader = new ResourceReader(stream);
+        var embedded = reader.Cast<DictionaryEntry>().Select(e => (string)e.Key).ToHashSet();
+
+        Assert.All(StratagemCatalog.All, s => Assert.Contains($"resources/stratagems/{s.Icon}.png", embedded));
     }
 
     [Theory]
