@@ -84,6 +84,20 @@ Numpad keys are recognised by their physical position, so toggling NumLock does 
 
 Left, right and wheel click need no setup.
 
+## Built-in stratagems
+
+Every Helldivers 2 stratagem from the [wiki](https://helldivers.wiki.gg/wiki/Stratagems/ru) is built
+in: 63 of them, from support weapons to mission stratagems. Nothing has to be recorded.
+
+1. Click a marker on the main screen.
+2. Type part of the name in the search box above the list — `лазер`, `AC-8`, `пулемёт`. Case,
+   `ё` and dashes do not matter. Enter picks the first match; a click picks any.
+
+The chosen stratagem becomes an ordinary macro in the current profile and is bound to the button.
+It types the code with the **keyboard arrow keys** only (never WASD), 30 ms before every press and
+release. Hold Ctrl as usual and press the mouse button. The macro can be edited in Settings like any
+other; picking the same stratagem again reuses it instead of creating a copy.
+
 ## Pause between key presses
 
 Preferences → *Pause between key presses*, 30 ms by default. Games read the keyboard once per

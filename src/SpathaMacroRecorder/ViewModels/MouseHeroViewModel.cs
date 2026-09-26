@@ -47,12 +47,43 @@ internal sealed partial class MouseHeroButtonViewModel : ObservableObject
     }
 }
 
-/// <summary>Пункт выпадающего списка: снятие привязки или конкретный макрос.</summary>
-internal sealed class MacroChoice(Macro? macro)
+/// <summary>
+/// Пункт списка назначения: снятие привязки, макрос профиля или встроенная стратагема,
+/// макроса которой в профиле ещё нет.
+/// </summary>
+internal sealed class MacroChoice
 {
-    public Macro? Macro { get; } = macro;
+    private MacroChoice(Macro? macro, Stratagem? stratagem, bool isCurrent)
+    {
+        Macro = macro;
+        Stratagem = stratagem;
+        IsCurrent = isCurrent;
+    }
 
-    public string Label => Macro?.Name ?? AppText.Instance["RemoveMacro"];
+    public static MacroChoice Remove() => new(null, null, false);
+
+    public static MacroChoice ForMacro(Macro macro, bool isCurrent) =>
+        new(macro, StratagemCatalog.ForMacro(macro), isCurrent);
+
+    public static MacroChoice ForStratagem(Stratagem stratagem) => new(null, stratagem, false);
+
+    public Macro? Macro { get; }
+
+    public Stratagem? Stratagem { get; }
+
+    public bool IsRemove => Macro is null && Stratagem is null;
+
+    /// <summary>Этот пункт сейчас и висит на кнопке.</summary>
+    public bool IsCurrent { get; }
+
+    public string Label => Macro?.Name ?? Stratagem?.Name ?? AppText.Instance["RemoveMacro"];
+
+    /// <summary>Вторая строка: группа и код стрелками — у стратагем, «свой макрос» — у прочих.</summary>
+    public string Details => Stratagem is { } stratagem
+        ? $"{AppText.Instance["StratagemGroup" + stratagem.Group]}  {stratagem.Arrows}"
+        : Macro is null ? string.Empty : AppText.Instance["OwnMacro"];
+
+    public bool HasDetails => Details.Length > 0;
 }
 
 /// <summary>
@@ -97,14 +128,19 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
 
     public ObservableCollection<MouseHeroButtonViewModel> Buttons { get; } = [];
 
-    /// <summary>Пункты списка: первым идёт снятие привязки, дальше макросы профиля.</summary>
+    /// <summary>
+    /// Пункты списка под строкой поиска: снятие привязки, макросы профиля, затем стратагемы,
+    /// которых в профиле ещё нет. Выбор стратагемы сам создаёт её макрос.
+    /// </summary>
     public ObservableCollection<MacroChoice> MacroChoices { get; } = [];
 
     [ObservableProperty]
-    private MouseHeroButtonViewModel? _selectedButton;
+    private string _searchText = string.Empty;
 
-    /// <summary>Идёт назначение или перестройка списка — сеттер SelectedChoice не должен писать.</summary>
-    private bool _isAssigning;
+    partial void OnSearchTextChanged(string value) => RebuildChoices();
+
+    [ObservableProperty]
+    private MouseHeroButtonViewModel? _selectedButton;
 
     public string ProfileName => _editor.CurrentProfile?.ProfileName ?? AppText.Instance["NoProfile"];
 
@@ -152,47 +188,11 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
     /// <summary>Полное обновление: список макросов и подсветка кнопок.</summary>
     public void Refresh()
     {
-        var profile = _editor.CurrentProfile;
-
-        // Пересобираем список, только если он реально изменился: Refresh дёргается на каждую
-        // смену выбранного макроса, а лишняя перестройка зря сбрасывает выбор в меню.
-        if (profile is not null
-            && MacroChoices.Skip(1).Select(c => c.Macro).SequenceEqual(profile.Macros))
-        {
-            RefreshAssignments();
-            OnPropertyChanged(nameof(ProfileName));
-            return;
-        }
-
-        // Перестройка списка сбрасывает выбор в выпадающем меню, а это ведёт в сеттер
-        // AssignedMacro и стирает привязку. Под флагом сеттер ничего не пишет в модель.
-        _isAssigning = true;
-        try
-        {
-            MacroChoices.Clear();
-            MacroChoices.Add(new MacroChoice(null));
-            if (profile is not null)
-            {
-                foreach (var macro in profile.Macros)
-                {
-                    MacroChoices.Add(new MacroChoice(macro));
-                }
-            }
-        }
-        finally
-        {
-            _isAssigning = false;
-        }
-
         RefreshAssignments();
         OnPropertyChanged(nameof(ProfileName));
     }
 
-    /// <summary>
-    /// Только подсветка кнопок, без пересборки AvailableMacros. Этот список — источник данных
-    /// того самого выпадающего списка, через который идёт назначение: очистить его в момент
-    /// смены выбора значит сбросить выбор в null и войти в сеттер повторно.
-    /// </summary>
+    /// <summary>Подсветка кнопок и всё, что зависит от макроса на выбранной кнопке.</summary>
     private void RefreshAssignments()
     {
         var profile = _editor.CurrentProfile;
@@ -205,8 +205,48 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(AssignedMacro));
-        OnPropertyChanged(nameof(SelectedChoice));
+        OnPropertyChanged(nameof(AssignedMacroTitle));
         NotifyPlaybackSettingsChanged();
+        RebuildChoices();
+    }
+
+    private void RebuildChoices()
+    {
+        var profile = _editor.CurrentProfile;
+        var assigned = AssignedMacro;
+        string query = SearchText;
+
+        MacroChoices.Clear();
+        if (profile is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(query) && assigned is not null)
+        {
+            MacroChoices.Add(MacroChoice.Remove());
+        }
+
+        var inProfile = new HashSet<Stratagem>();
+        foreach (var macro in profile.Macros)
+        {
+            if (StratagemCatalog.ForMacro(macro) is { } stratagem)
+            {
+                inProfile.Add(stratagem);
+            }
+
+            if (StratagemCatalog.Matches(macro.Name, query))
+            {
+                MacroChoices.Add(MacroChoice.ForMacro(macro, ReferenceEquals(macro, assigned)));
+            }
+        }
+
+        foreach (var stratagem in StratagemCatalog.Search(query).Where(s => !inProfile.Contains(s)))
+        {
+            MacroChoices.Add(MacroChoice.ForStratagem(stratagem));
+        }
+
+        OnPropertyChanged(nameof(HasNoMatches));
     }
 
     /// <summary>Макрос, назначенный на выбранную кнопку.</summary>
@@ -215,34 +255,42 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
             ? null
             : MacroAssignment.Find(_editor.CurrentProfile, SelectedButton.ButtonId);
 
-    /// <summary>Выбранный пункт списка. Первый пункт снимает привязку.</summary>
-    public MacroChoice? SelectedChoice
-    {
-        get
-        {
-            var assigned = AssignedMacro;
-            return MacroChoices.FirstOrDefault(c => ReferenceEquals(c.Macro, assigned)) ?? MacroChoices.FirstOrDefault();
-        }
-        set
-        {
-            // Защита от повторного входа: любое изменение списка или выбора внутри сеттера
-            // приводит WPF обратно сюда же.
-            if (_isAssigning || SelectedButton is null || _editor.CurrentProfile is null)
-            {
-                return;
-            }
+    /// <summary>Что висит на кнопке сейчас — строкой над поиском.</summary>
+    public string AssignedMacroTitle => AssignedMacro?.Name ?? AppText.Instance["NotAssigned"];
 
-            _isAssigning = true;
-            try
-            {
-                MacroAssignment.Assign(_editor.CurrentProfile, SelectedButton.ButtonId, value?.Macro);
-                _editor.SaveCurrentProfile();
-                RefreshAssignments();
-            }
-            finally
-            {
-                _isAssigning = false;
-            }
+    public bool HasNoMatches => MacroChoices.Count == 0 && _editor.CurrentProfile is not null;
+
+    /// <summary>
+    /// Назначение по клику на пункт списка. Стратагема, которой ещё нет в профиле, сначала
+    /// становится обычным макросом профиля — дальше его можно править в Настройках.
+    /// </summary>
+    [RelayCommand]
+    private void AssignChoice(MacroChoice? choice)
+    {
+        if (choice is null || SelectedButton is null || _editor.CurrentProfile is not { } profile)
+        {
+            return;
+        }
+
+        var macro = choice.Macro;
+        if (macro is null && choice.Stratagem is { } stratagem)
+        {
+            macro = StratagemCatalog.GetOrAddMacro(profile, stratagem);
+        }
+
+        MacroAssignment.Assign(profile, SelectedButton.ButtonId, macro);
+        _editor.SaveCurrentProfile();
+        SearchText = string.Empty;
+        RefreshAssignments();
+    }
+
+    /// <summary>Enter в строке поиска назначает первое, что нашлось.</summary>
+    [RelayCommand]
+    private void AssignFirstMatch()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            AssignChoice(MacroChoices.FirstOrDefault(c => !c.IsRemove));
         }
     }
 
@@ -435,8 +483,7 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(SelectedButtonCode));
         OnPropertyChanged(nameof(SelectionTitle));
-        OnPropertyChanged(nameof(AssignedMacro));
-        OnPropertyChanged(nameof(SelectedChoice));
-        NotifyPlaybackSettingsChanged();
+        SearchText = string.Empty;
+        RefreshAssignments();
     }
 }
