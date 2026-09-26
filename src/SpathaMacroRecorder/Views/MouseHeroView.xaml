@@ -310,11 +310,20 @@
                     <TextBlock Margin="0,0,0,6"
                                Style="{StaticResource SecondaryTextStyle}"
                                Text="{loc:Tr MacroOnButton}" />
-                    <TextBlock Margin="0,0,0,8"
-                               FontWeight="SemiBold"
-                               Foreground="{StaticResource TextPrimaryBrush}"
-                               TextWrapping="Wrap"
-                               Text="{Binding AssignedMacroTitle}" />
+                    <DockPanel Margin="0,0,0,8">
+                        <Image Width="40"
+                               Height="40"
+                               Margin="0,0,10,0"
+                               DockPanel.Dock="Left"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               Source="{Binding AssignedIconUri}"
+                               Visibility="{Binding HasAssignedIcon, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <TextBlock VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding AssignedMacroTitle}" />
+                    </DockPanel>
 
                     <!-- Поиск: стратагемы и макросы профиля одним списком -->
                     <Grid>
@@ -333,7 +342,7 @@
                                    Visibility="{Binding Text.IsEmpty, ElementName=SearchBox, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </Grid>
 
-                    <Border Height="210"
+                    <Border Height="240"
                             Margin="0,6,0,0"
                             Background="{StaticResource PanelBackgroundBrush}"
                             BorderBrush="{StaticResource BorderBrush}"
@@ -348,16 +357,26 @@
                                                                       RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource ChoiceButtonStyle}">
-                                                <StackPanel>
-                                                    <TextBlock x:Name="ChoiceLabel"
-                                                               Foreground="{StaticResource TextPrimaryBrush}"
-                                                               TextWrapping="Wrap"
-                                                               Text="{Binding Label}" />
-                                                    <TextBlock Margin="0,2,0,0"
-                                                               Style="{StaticResource SecondaryTextStyle}"
-                                                               Text="{Binding Details}"
-                                                               Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                                </StackPanel>
+                                                <DockPanel>
+                                                    <Image Width="32"
+                                                           Height="32"
+                                                           Margin="0,0,8,0"
+                                                           VerticalAlignment="Center"
+                                                           DockPanel.Dock="Left"
+                                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                                           Source="{Binding IconUri}"
+                                                           Visibility="{Binding HasIcon, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                    <StackPanel VerticalAlignment="Center">
+                                                        <TextBlock x:Name="ChoiceLabel"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   Text="{Binding Label}" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   Style="{StaticResource SecondaryTextStyle}"
+                                                                   Text="{Binding Details}"
+                                                                   Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                    </StackPanel>
+                                                </DockPanel>
                                             </Button>
                                             <DataTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding IsCurrent}" Value="True">

@@ -84,19 +84,53 @@ Numpad keys are recognised by their physical position, so toggling NumLock does 
 
 Left, right and wheel click need no setup.
 
+## Updating
+
+The **Check for updates** button at the bottom of the main window updates the program in one click.
+On start the program quietly asks GitHub for the latest release; when a newer one is out, the button
+lights up as **⬆ Update to Release X**.
+
+Pressing it downloads `SpathaMacroRecorder.exe` from the repository's Releases, checks it against the
+SHA-256 checksum GitHub publishes for the file, puts it in place of the running exe and restarts.
+Profiles and settings live in `%AppData%` and are kept. If the program was started together with the
+game, the new copy keeps following the game and still closes with it. The replaced exe is left as
+`SpathaMacroRecorder.exe.old` and deleted on the next start.
+
+The program has to sit in a folder it can write to (`C:\Spatha` is fine, `Program Files` is not).
+The check needs the repository to be public: GitHub serves releases of a private repository only to
+people signed in with access to it.
+
+### Publishing an update
+
+Actions → **Сборка** → Run workflow → enter the release number (for example `3.1`). The workflow
+runs the tests, builds the exe with that number as its version, and publishes the release. There is no
+version to bump by hand: the number entered is what running copies compare against.
+
 ## Built-in stratagems
 
 Every Helldivers 2 stratagem from the [wiki](https://helldivers.wiki.gg/wiki/Stratagems/ru) is built
-in: 63 of them, from support weapons to mission stratagems. Nothing has to be recorded.
+in: 114 of them — orbital strikes, Eagle, support weapons, backpacks, vehicles, sentries,
+emplacements and mission stratagems. Nothing has to be recorded.
 
 1. Click a marker on the main screen.
-2. Type part of the name in the search box above the list — `лазер`, `AC-8`, `пулемёт`. Case,
-   `ё` and dashes do not matter. Enter picks the first match; a click picks any.
+2. Type part of the name in the search box above the list, in English or Russian —
+   `orbital laser`, `лазер`, `AC-8`, `guard dog`. Case, `ё` and dashes do not matter. Enter picks
+   the first match; a click picks any.
+
+Names follow the interface language (Preferences). Every row shows the stratagem's in-game icon,
+its section and its code in arrows, and the icon of the stratagem on the button is shown above the
+search box. The icons come from the open
+[Helldivers 2 stratagem icon set](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg),
+converted to PNG and built into the exe.
 
 The chosen stratagem becomes an ordinary macro in the current profile and is bound to the button.
 It types the code with the **keyboard arrow keys** only (never WASD), 30 ms before every press and
 release. Hold Ctrl as usual and press the mouse button. The macro can be edited in Settings like any
 other; picking the same stratagem again reuses it instead of creating a copy.
+
+Stratagem macros made by Release 2.0 are updated when the profile opens: they get the new name, and
+the new code where the game changed it (B-1 Supply Pack, SSSD Delivery). Macros whose steps you
+edited by hand are left as they are.
 
 ## Pause between key presses
 

@@ -109,6 +109,24 @@
                         Command="{Binding OpenMouseSetupCommand}"
                         Content="{loc:Tr MouseSetup}" />
 
+                <!-- Обновление: подсвечивается, когда на GitHub вышла версия новее -->
+                <Button Margin="10,0,0,0"
+                        Padding="14,8"
+                        Command="{Binding UpdateCommand}"
+                        Content="{Binding UpdateButtonText}"
+                        ToolTip="{loc:Tr UpdateTip}">
+                    <Button.Style>
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
                 <StackPanel DockPanel.Dock="Right"
                             HorizontalAlignment="Right"
                             Orientation="Horizontal"

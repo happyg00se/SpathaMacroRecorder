@@ -22,8 +22,11 @@ public partial class App : Application
     private IHost? _host;
     private bool _hostStarted;
 
-    /// <summary>Игра, запущенная этой копией программы по команде Steam; null — открыта вручную.</summary>
-    private GameLaunch.Request? _companionGame;
+    /// <summary>
+    /// Процесс игры, вместе с которой живёт эта копия программы (её запустил Steam, либо она
+    /// перезапущена обновлением); null — программа открыта вручную.
+    /// </summary>
+    internal static string? CompanionGame { get; private set; }
 
     private string? _gameLaunchError;
     private static bool _errorReported;
@@ -47,7 +50,7 @@ public partial class App : Application
             try
             {
                 using var launched = GameLaunch.Start(game);
-                _companionGame = game;
+                CompanionGame = game.ProcessName;
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
             {
@@ -55,9 +58,15 @@ public partial class App : Application
             }
         }
 
+        if (!selfTest && GameLaunch.ParseWatch(e.Args) is { } watched)
+        {
+            CompanionGame = watched;
+        }
+
         if (!selfTest)
         {
             TakeOverPreviousInstances();
+            UpdateService.CleanupAfterUpdate();
         }
 
         try
@@ -142,7 +151,7 @@ public partial class App : Application
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         Log.Information("Startup: main window created");
 
-        if (_companionGame is { } game)
+        if (CompanionGame is { } game)
         {
             // Запущены вместе с игрой — закрываемся, когда она закроется. Окно открывается
             // свёрнутым и без фокуса: иначе оно выскакивало бы поверх загружающейся игры.
@@ -151,12 +160,12 @@ public partial class App : Application
                 Log.Information("The game has closed - exiting");
                 Shutdown();
             });
-            gameWatcher.Watch(game.ProcessName);
+            gameWatcher.Watch(game);
 
             mainWindow.ShowActivated = false;
             mainWindow.WindowState = WindowState.Minimized;
             mainWindow.Show();
-            Log.Information("SpathaMacroRecorder started together with {Game}", game.ProcessName);
+            Log.Information("SpathaMacroRecorder started together with {Game}", game);
         }
         else
         {
@@ -315,6 +324,7 @@ public partial class App : Application
                 services.AddSingleton<MacroPlayer>();
                 services.AddSingleton<ProfileManager>();
                 services.AddSingleton<AppSettingsService>();
+                services.AddSingleton<UpdateService>();
 
                 services.AddSingleton<ProfileListViewModel>();
                 services.AddSingleton<MacroEditorViewModel>();
