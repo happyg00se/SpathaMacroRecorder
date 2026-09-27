@@ -1,7 +1,12 @@
 # Spatha Macro Recorder
 
 A keyboard and mouse macro recorder for Windows 10/11, built for the ASUS ROG Spatha X and
-working independently of Armoury Crate.
+working independently of Armoury Crate. Every Helldivers 2 stratagem is built in. Interface in
+English and Russian.
+
+**[⬇ Download the latest release](https://github.com/happyg00se/SpathaMacroRecorder/releases/latest)**
+— one `SpathaMacroRecorder.exe`, nothing to install. Put it in a permanent folder such as
+`C:\Spatha` and run it. Later versions install themselves from the **Update** button in the program.
 
 ## Disclaimer
 
@@ -19,11 +24,14 @@ the user.
 - Playback modes: once, hold (loops while the trigger is held), repeat N times. Speed
   multiplier 0.5x–2.0x and optional delay jitter.
 - Panic key stops playback instantly and releases every key and button the macro was holding.
+- All 114 Helldivers 2 stratagems with their in-game icons, searchable by name in English or
+  Russian: pick one and it is on the mouse button, typed with the arrow keys.
+- Updates itself from this repository's Releases in one click.
 
 ## Portable build
 
 The app ships as a single self-contained `.exe`. No installer, no .NET runtime to install, no
-DLLs beside it. It writes nothing to the registry unless you enable "Start with Windows".
+DLLs beside it. It writes nothing to the registry and does not start with Windows.
 
 Data lives in `%AppData%\SpathaMacroRecorder\`:
 
