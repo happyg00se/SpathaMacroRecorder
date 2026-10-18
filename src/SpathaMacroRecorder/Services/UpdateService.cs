@@ -27,9 +27,6 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
     internal const string Repository = "SpathaMacroRecorder";
     internal const string AssetName = "SpathaMacroRecorder.exe";
 
-    /// <summary>Передаётся новой копии: она запущена обновлением, а не пользователем.</summary>
-    internal const string UpdatedArgument = "--updated";
-
     /// <summary>
     /// Версия запущенной программы — из номера сборки, который ставит релиз. Объявлена раньше
     /// Http: статические поля заполняются по порядку, а клиент пишет версию в User-Agent.
@@ -41,10 +38,19 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
 
     private static readonly HttpClient Http = CreateClient();
 
+    /// <summary>
+    /// Сколько ждать ответа GitHub о последнем релизе. Общий таймаут клиента — десять минут
+    /// под скачивание exe; проверка — один маленький JSON, и висеть столько ей незачем.
+    /// </summary>
+    private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(20);
+
     /// <summary>Новый релиз, если он есть; null — установлена последняя версия.</summary>
     internal async Task<UpdateInfo?> CheckAsync(CancellationToken cancellationToken = default)
     {
-        string json = await Http.GetStringAsync(LatestReleaseUri, cancellationToken).ConfigureAwait(false);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(CheckTimeout);
+
+        string json = await Http.GetStringAsync(LatestReleaseUri, timeout.Token).ConfigureAwait(false);
         var release = ParseRelease(json);
         logger.LogInformation("Update check: latest {Latest}, running {Current}", release?.Version, CurrentVersion);
         return release is not null && IsNewer(release.Version, CurrentVersion) ? release : null;
@@ -62,6 +68,7 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
         string exePath = Environment.ProcessPath
                          ?? throw new InvalidOperationException("The program's own path is unknown.");
         string downloadPath = exePath + ".download";
+        long? expectedLength = null;
 
         try
         {
@@ -69,6 +76,7 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
             {
                 response.EnsureSuccessStatusCode();
                 long? total = response.Content.Headers.ContentLength;
+                expectedLength = total;
 
                 await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
                 await using var target = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -87,14 +95,7 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
                 }
             }
 
-            if (update.Sha256 is { } expected)
-            {
-                string actual = await ComputeSha256Async(downloadPath, cancellationToken).ConfigureAwait(false);
-                if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidDataException($"Checksum mismatch: expected {expected}, got {actual}.");
-                }
-            }
+            await VerifyDownloadAsync(downloadPath, expectedLength, update.Sha256, cancellationToken).ConfigureAwait(false);
 
             Install(exePath, downloadPath);
             logger.LogInformation("Updated to {Version}", update.Version);
@@ -106,11 +107,47 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
         }
     }
 
-    /// <summary>Запускает обновлённую программу. Старая копия закрывается сама — см. App.</summary>
+    /// <summary>
+    /// Скачанный файл до установки: размер как обещал сервер, начало как у любого exe Windows
+    /// («MZ») и, когда GitHub дал контрольную сумму, — она. Иначе на место программы мог бы
+    /// встать обрезанный или подменённый файл.
+    /// </summary>
+    internal static async Task VerifyDownloadAsync(string path, long? expectedLength, string? sha256, CancellationToken cancellationToken = default)
+    {
+        long length = new FileInfo(path).Length;
+        if (expectedLength is { } expected && length != expected)
+        {
+            throw new InvalidDataException($"Download is incomplete: {length} of {expected} bytes.");
+        }
+
+        var header = new byte[2];
+        await using (var stream = File.OpenRead(path))
+        {
+            int read = await stream.ReadAsync(header, cancellationToken).ConfigureAwait(false);
+            if (read < 2 || header[0] != (byte)'M' || header[1] != (byte)'Z')
+            {
+                throw new InvalidDataException("Downloaded file is not a Windows executable.");
+            }
+        }
+
+        if (sha256 is { } expectedHash)
+        {
+            string actual = await ComputeSha256Async(path, cancellationToken).ConfigureAwait(false);
+            if (!string.Equals(actual, expectedHash, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException($"Checksum mismatch: expected {expectedHash}, got {actual}.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Запускает обновлённую программу. Старая копия закрывается сама — см. App. Если новый exe
+    /// не запускается (антивирус, битый файл без контрольной суммы), старый возвращается на место:
+    /// программа должна остаться рабочей, что бы ни случилось.
+    /// </summary>
     internal static void Restart(string exePath, string? watchedGame)
     {
         var info = new ProcessStartInfo(exePath) { UseShellExecute = false };
-        info.ArgumentList.Add(UpdatedArgument);
         if (watchedGame is not null)
         {
             // Программа была запущена вместе с игрой — новая копия продолжает за ней следить
@@ -119,7 +156,25 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
             info.ArgumentList.Add(watchedGame);
         }
 
-        Process.Start(info)?.Dispose();
+        try
+        {
+            Process.Start(info)?.Dispose();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Rollback(exePath);
+            throw;
+        }
+    }
+
+    /// <summary>Возвращает прежний exe из «.old» на место; нечего возвращать — ничего не делает.</summary>
+    internal static void Rollback(string exePath)
+    {
+        string oldPath = OldPath(exePath);
+        if (File.Exists(oldPath))
+        {
+            File.Move(oldPath, exePath, overwrite: true);
+        }
     }
 
     /// <summary>Убирает exe, оставшийся от прошлого обновления.</summary>
@@ -191,10 +246,18 @@ internal sealed class UpdateService(ILogger<UpdateService> logger)
         return null;
     }
 
-    /// <summary>«v3.0» → 3.0.0.0; то, что на номер версии не похоже, — null.</summary>
+    /// <summary>
+    /// «v3.0» → 3.0.0.0, «v3» → 3.0.0.0 (сборка релиза так и дополняет номер без точки);
+    /// то, что на номер версии не похоже, — null.
+    /// </summary>
     internal static Version? ParseTag(string? tag)
     {
         string text = (tag ?? string.Empty).Trim().TrimStart('v', 'V');
+        if (text.Length > 0 && !text.Contains('.') && text.All(char.IsAsciiDigit))
+        {
+            text += ".0";
+        }
+
         return Version.TryParse(text, out var version) ? Normalize(version) : null;
     }
 

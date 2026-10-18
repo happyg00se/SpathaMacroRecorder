@@ -56,7 +56,17 @@ internal sealed class ProfileManager
             try
             {
                 string json = File.ReadAllText(path);
-                profiles.Add(DeserializeProfile(json));
+                var profile = DeserializeProfile(json);
+
+                // Макросы стратагем из прошлых версий — к нынешним названиям и кодам. Здесь, а не
+                // при выборе профиля в окне: так обновляются все профили, а не только открытый.
+                if (StratagemCatalog.Upgrade(profile))
+                {
+                    _logger.LogInformation("Profile {Name}: stratagem macros updated to the current catalog", profile.ProfileName);
+                    Save(profile);
+                }
+
+                profiles.Add(profile);
             }
             catch (Exception ex) when (IsRecoverableFileError(ex))
             {
@@ -151,6 +161,7 @@ internal sealed class ProfileManager
     {
         string json = File.ReadAllText(sourcePath);
         var profile = DeserializeProfile(json);
+        StratagemCatalog.Upgrade(profile);
 
         string targetName = profile.ProfileName;
         int suffix = 2;
