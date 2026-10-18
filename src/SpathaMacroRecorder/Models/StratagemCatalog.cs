@@ -325,14 +325,13 @@ public static class StratagemCatalog
         bool changed = false;
         foreach (var macro in profile.Macros)
         {
-            var legacy = FindLegacy(macro.Name);
-            var stratagem = All.FirstOrDefault(s => s.IsNamed(macro.Name))
-                            ?? (legacy is { } l ? ByEnglishName(l.NameEn) : null);
+            var stratagem = ForMacro(macro);
             if (stratagem is null)
             {
                 continue;
             }
 
+            var legacy = FindLegacy(macro.Name);
             bool generatedByUs = macro.Steps.SequenceEqual(BuildSteps(stratagem))
                                  || (legacy is { } old && macro.Steps.SequenceEqual(BuildSteps(old.OldCode)));
             if (!generatedByUs)

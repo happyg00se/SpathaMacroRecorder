@@ -24,9 +24,10 @@ public partial class App : Application
 
     /// <summary>
     /// Процесс игры, вместе с которой живёт эта копия программы (её запустил Steam, либо она
-    /// перезапущена обновлением); null — программа открыта вручную.
+    /// перезапущена обновлением); null — программа открыта вручную. Дальше по программе
+    /// об этом знает GameWatcher.ProcessName.
     /// </summary>
-    internal static string? CompanionGame { get; private set; }
+    private string? _companionGame;
 
     private string? _gameLaunchError;
     private static bool _errorReported;
@@ -50,7 +51,7 @@ public partial class App : Application
             try
             {
                 using var launched = GameLaunch.Start(game);
-                CompanionGame = game.ProcessName;
+                _companionGame = game.ProcessName;
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
             {
@@ -60,7 +61,7 @@ public partial class App : Application
 
         if (!selfTest && GameLaunch.ParseWatch(e.Args) is { } watched)
         {
-            CompanionGame = watched;
+            _companionGame = watched;
         }
 
         if (!selfTest)
@@ -151,7 +152,7 @@ public partial class App : Application
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         Log.Information("Startup: main window created");
 
-        if (CompanionGame is { } game)
+        if (_companionGame is { } game)
         {
             // Запущены вместе с игрой — закрываемся, когда она закроется. Окно открывается
             // свёрнутым и без фокуса: иначе оно выскакивало бы поверх загружающейся игры.

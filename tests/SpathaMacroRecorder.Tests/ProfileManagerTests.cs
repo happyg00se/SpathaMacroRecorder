@@ -29,6 +29,26 @@ public sealed class ProfileManagerTests : IDisposable
     }
 
     [Fact]
+    public void LoadAll_UpgradesStratagemMacrosFromOlderReleases()
+    {
+        var manager = CreateManager();
+        // Release 2.0: старое название и старый код «Ящика с припасами».
+        var old = new Macro { Id = Guid.NewGuid(), Name = "Ящик с припасами B-1", Steps = StratagemCatalog.BuildSteps("DLDUUR") };
+        manager.Save(new MacroProfile { ProfileName = "Old", Macros = [old] });
+
+        var loaded = Assert.Single(CreateManager().LoadAll());
+        var macro = Assert.Single(loaded.Macros);
+
+        var supplyPack = StratagemCatalog.All.Single(s => s.NameEn == "B-1 Supply Pack");
+        Assert.True(supplyPack.IsNamed(macro.Name));
+        Assert.Equal(StratagemCatalog.BuildSteps(supplyPack), macro.Steps);
+
+        // Обновлённый профиль записан на диск, а не только поправлен в памяти.
+        var reloaded = Assert.Single(CreateManager().LoadAll());
+        Assert.True(supplyPack.IsNamed(Assert.Single(reloaded.Macros).Name));
+    }
+
+    [Fact]
     public void Save_PersistsProfileAcrossRestart()
     {
         var manager = CreateManager();

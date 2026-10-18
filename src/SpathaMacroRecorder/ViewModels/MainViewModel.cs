@@ -52,6 +52,7 @@ internal partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(StartRecordingCommand))]
     [NotifyCanExecuteChangedFor(nameof(StopCommand))]
     [NotifyCanExecuteChangedFor(nameof(TestCommand))]
+    [NotifyCanExecuteChangedFor(nameof(UpdateCommand))]
     private bool _isRecording;
 
     [ObservableProperty]
@@ -134,6 +135,13 @@ internal partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsUpdateAvailable))]
     private UpdateInfo? _availableUpdate;
 
+    /// <summary>Идёт запрос к GitHub — короткий, но кнопку на это время лучше не трогать.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
+    [NotifyCanExecuteChangedFor(nameof(UpdateCommand))]
+    private bool _isCheckingUpdate;
+
+    /// <summary>Идёт загрузка и установка — программа вот-вот перезапустится.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
     [NotifyCanExecuteChangedFor(nameof(UpdateCommand))]
@@ -148,6 +156,8 @@ internal partial class MainViewModel : ObservableObject
 
     public string UpdateButtonText => IsUpdating
         ? string.Format(AppText.Instance["UpdateDownloading"], UpdateProgress)
+        : IsCheckingUpdate
+        ? AppText.Instance["UpdateChecking"]
         : AvailableUpdate is { } update
             ? string.Format(AppText.Instance["UpdateTo"], update.Title)
             : AppText.Instance["UpdateCheck"];
@@ -173,11 +183,19 @@ internal partial class MainViewModel : ObservableObject
     {
         var owner = Application.Current.MainWindow;
         string title = AppText.Instance["UpdateTitle"];
-        IsUpdating = true;
-        UpdateProgress = 0;
         try
         {
-            var update = await _updates.CheckAsync();
+            UpdateInfo? update;
+            IsCheckingUpdate = true;
+            try
+            {
+                update = await _updates.CheckAsync();
+            }
+            finally
+            {
+                IsCheckingUpdate = false;
+            }
+
             AvailableUpdate = update;
             if (update is null)
             {
@@ -193,11 +211,19 @@ internal partial class MainViewModel : ObservableObject
             }
 
             _macroPlayer.Stop();
+            IsUpdating = true;
+            UpdateProgress = 0;
             var progress = new Progress<double>(p => UpdateProgress = (int)(p * 100));
             string exePath = await _updates.DownloadAndInstallAsync(update, progress);
 
-            UpdateService.Restart(exePath, App.CompanionGame);
+            UpdateService.Restart(exePath, _gameWatcher.ProcessName);
             Application.Current.Shutdown();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // Новый exe не запустился — Restart уже вернул старый на место.
+            MessageBox.Show(owner, string.Format(AppText.Instance["UpdateStartFailed"], ex.Message), title,
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
@@ -220,7 +246,8 @@ internal partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanUpdate => !IsUpdating;
+    // Во время записи обновляться нельзя: перезапуск выбросил бы записанные шаги.
+    private bool CanUpdate => !IsUpdating && !IsCheckingUpdate && !IsRecording;
 
     /// <summary>
     /// Физическая кнопка нажата: ищем в текущем профиле макрос с таким триггером и запускаем.

@@ -88,7 +88,7 @@ internal sealed class MacroChoice
     /// <summary>Значок стратагемы; у своих макросов и у снятия привязки его нет.</summary>
     public string? IconUri => Stratagem?.IconUri;
 
-    public bool HasIcon => Stratagem is not null;
+    public bool HasIcon => IconUri is not null;
 }
 
 /// <summary>
@@ -152,7 +152,13 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
     [ObservableProperty]
     private string _searchText = string.Empty;
 
-    partial void OnSearchTextChanged(string value) => RebuildChoices();
+    partial void OnSearchTextChanged(string value)
+    {
+        if (!_suppressRebuild)
+        {
+            RebuildChoices();
+        }
+    }
 
     [ObservableProperty]
     private MouseHeroButtonViewModel? _selectedButton;
@@ -234,8 +240,12 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
         string query = SearchText;
 
         MacroChoices.Clear();
-        if (profile is null)
+
+        // Панель назначения скрыта, пока кнопка не выбрана: собирать сотню строк со значками
+        // не для кого — а Refresh дёргается на каждую смену макроса в редакторе.
+        if (profile is null || SelectedButton is null)
         {
+            OnPropertyChanged(nameof(HasNoMatches));
             return;
         }
 
@@ -304,9 +314,28 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
 
         MacroAssignment.Assign(profile, SelectedButton.ButtonId, macro);
         _editor.SaveCurrentProfile();
-        SearchText = string.Empty;
+        ClearSearch();
         RefreshAssignments();
     }
+
+    /// <summary>
+    /// Сбрасывает поиск без пересборки списка: следом идёт RefreshAssignments, который соберёт
+    /// его сам — через сеттер список собирался бы дважды.
+    /// </summary>
+    private void ClearSearch()
+    {
+        _suppressRebuild = true;
+        try
+        {
+            SearchText = string.Empty;
+        }
+        finally
+        {
+            _suppressRebuild = false;
+        }
+    }
+
+    private bool _suppressRebuild;
 
     /// <summary>Enter в строке поиска назначает первое, что нашлось.</summary>
     [RelayCommand]
@@ -507,7 +536,7 @@ internal sealed partial class MouseHeroViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(SelectedButtonCode));
         OnPropertyChanged(nameof(SelectionTitle));
-        SearchText = string.Empty;
+        ClearSearch();
         RefreshAssignments();
     }
 }

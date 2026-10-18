@@ -334,12 +334,23 @@
                                 <KeyBinding Key="Enter" Command="{Binding AssignFirstMatchCommand}" />
                             </TextBox.InputBindings>
                         </TextBox>
+                        <!-- Подсказка видна только при пустом поле. Через триггер по Text, а не по
+                             Text.IsEmpty: у строки нет такого свойства, и подсказка легла бы поверх ввода. -->
                         <TextBlock Margin="9,0,0,0"
                                    VerticalAlignment="Center"
                                    IsHitTestVisible="False"
-                                   Style="{StaticResource SecondaryTextStyle}"
-                                   Text="{loc:Tr SearchMacro}"
-                                   Visibility="{Binding Text.IsEmpty, ElementName=SearchBox, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                   Text="{loc:Tr SearchMacro}">
+                            <TextBlock.Style>
+                                <Style TargetType="{x:Type TextBlock}" BasedOn="{StaticResource SecondaryTextStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </Grid>
 
                     <Border Height="240"

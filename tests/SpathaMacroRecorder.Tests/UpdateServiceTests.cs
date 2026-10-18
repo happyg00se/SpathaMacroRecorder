@@ -60,6 +60,7 @@ public sealed class UpdateServiceTests
     [InlineData("v3.0", 3, 0)]
     [InlineData("3.1", 3, 1)]
     [InlineData(" V10.2 ", 10, 2)]
+    [InlineData("v3", 3, 0)]
     public void ParseTag_ReadsReleaseNumbers(string tag, int major, int minor)
     {
         Assert.Equal(new Version(major, minor, 0, 0), UpdateService.ParseTag(tag));
@@ -127,10 +128,61 @@ public sealed class UpdateServiceTests
     }
 
     [Fact]
+    public void Rollback_PutsTheOldFileBack()
+    {
+        string dir = Directory.CreateTempSubdirectory("SpathaUpdateTest").FullName;
+        try
+        {
+            string exe = Path.Combine(dir, "SpathaMacroRecorder.exe");
+            File.WriteAllText(exe, "new");
+            File.WriteAllText(UpdateService.OldPath(exe), "old");
+
+            UpdateService.Rollback(exe);
+
+            Assert.Equal("old", File.ReadAllText(exe));
+            Assert.False(File.Exists(UpdateService.OldPath(exe)));
+
+            // Возвращать нечего — не ошибка.
+            UpdateService.Rollback(exe);
+            Assert.Equal("old", File.ReadAllText(exe));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public async Task VerifyDownload_RejectsTruncatedAndNonExeFiles()
+    {
+        string dir = Directory.CreateTempSubdirectory("SpathaUpdateTest").FullName;
+        try
+        {
+            string path = Path.Combine(dir, "download");
+            byte[] exe = [(byte)'M', (byte)'Z', 1, 2, 3];
+            File.WriteAllBytes(path, exe);
+
+            string sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(exe));
+            await UpdateService.VerifyDownloadAsync(path, exe.Length, sha);
+            await UpdateService.VerifyDownloadAsync(path, null, null);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => UpdateService.VerifyDownloadAsync(path, exe.Length + 1, null));
+            await Assert.ThrowsAsync<InvalidDataException>(() => UpdateService.VerifyDownloadAsync(path, null, new string('0', 64)));
+
+            File.WriteAllText(path, "<html>Not Found</html>");
+            await Assert.ThrowsAsync<InvalidDataException>(() => UpdateService.VerifyDownloadAsync(path, null, null));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void ParseWatch_ReadsTheGameToFollowAfterRestart()
     {
-        Assert.Equal("helldivers2", GameLaunch.ParseWatch(["--updated", "--watch-game", "helldivers2.exe"]));
-        Assert.Null(GameLaunch.ParseWatch(["--updated"]));
+        Assert.Equal("helldivers2", GameLaunch.ParseWatch(["--watch-game", "helldivers2.exe"]));
+        Assert.Null(GameLaunch.ParseWatch([]));
         Assert.Null(GameLaunch.ParseWatch(["--watch-game"]));
     }
 }
